@@ -1,153 +1,40 @@
 # Agent 协作规范
 
-## 文档绘图规范
+## 1. 文档职责划分
 
-在编写项目文档（尤其是 `docs/2026-06-14-mvp-design.md`）时，如果需要绘制结构性图表，遵循以下边界：
+项目中的 Markdown 文档按读者分层，避免把开发记录塞进用户文档：
 
-| 图表类型 | 推荐方式 | 说明 |
+| 文件/目录 | 读者 | 内容范围 |
 |---|---|---|
-| 高层架构图 | **Mermaid** | 表达系统分层、模块边界、依赖方向 |
-| 流程图 / 状态图 | **Mermaid** | 表达决策流程、状态流转、时序交互 |
-| 节点内部明细 | **ASCII 文字列表 或 Mermaid Markdown 字符串** | 放在 Mermaid 节点内或段落中 |
-| 层级结构明细 | **ASCII 树状图** | 缩进结构稳定，不依赖框线对齐 |
-| 复杂带连线框线图 | **禁止** | 不用 `┌─┐`、`│`、`──` 等字符拼接框线和箭头 |
+| `README.md` | 最终用户（使用 Legion 的人） | 项目简介、前置要求、配置步骤、使用命令、快速开始 |
+| `docs/` | 开发者 / 维护者 / Agent | 设计稿、调研、开发记录、实现细节、调试方法、已知限制 |
+| `AGENTS.md` | Agent（本工具） | Agent 协作规范、代码风格、目录约定等 |
 
-### 核心原则
+- 不要往 `README.md` 里放源码级实现细节、调试脚本、内部决策过程。
+- 需要记录“为什么这样实现”“踩过什么坑”“内部限制”时，写到 `docs/` 下的文档里，并遵循下方的日期规范。
 
-1. **上层框架和流程用 Mermaid**：整体结构、模块关系、消息路由、状态流转等用 Mermaid 绘制，保证可渲染、可维护。
-2. **内部细节可用 ASCII 树状图或列表**：Mermaid 节点内部的内容、目录结构、配置示例等，用缩进树或文字列表表达，因为缩进结构对字体和对齐不敏感。
-3. **避免手写复杂 ASCII 框线图**：带框线和斜向/复杂连线的 ASCII 图在不同编辑器、字体、终端下容易错位，应改用 Mermaid。
+## 2. 文档日期规范
 
-### Mermaid 节点内容排版
+`docs/` 目录下的记录类 Markdown 文档（如实现记录、设计文档、决策记录）必须满足：
 
-- 单个节点需要展示多行内容时，优先使用 **Markdown 字符串**：用 `"`...`"` 包裹，内部用 `**标题**` 加粗，用换行分隔条目。
-- 需要在节点内保留 `<`、`>` 等特殊字符时，要么使用 Markdown 字符串并配合 `htmlLabels: false`，要么用 HTML 实体（如 `&lt;` / `&gt;`）转义。
-- Mermaid Markdown 字符串对 `-` / `*` / `+` 列表的渲染支持不稳定，节点内建议避免使用；节点外的普通 Markdown / ASCII 块可以正常使用列表。
-- 如果条目很多或需要复杂层级，不要把节点拆得过细，应把详细结构放到节点下方的 ASCII 树状图或文字列表中。
+1. **文件名前缀日期**：使用 `YYYY-MM-DD-` 开头，例如 `2026-06-14-first-implementation.md`。
+2. **文末日期区块**：在文档末尾包含如下日期区块：
 
-### 优先使用的 Mermaid 图表类型
-
-- `flowchart`：架构分层、消息路由、依赖关系
-- `sequenceDiagram`：时序交互
-- `erDiagram`：实体关系
-- `stateDiagram-v2`：状态流转
-
-### 示例
-
-高层架构用 Mermaid，节点内部用 Markdown 字符串写多行内容（`**标题**` 加粗，换行分隔条目）：
-
-```mermaid
+```markdown
 ---
-config:
-  htmlLabels: false
----
-flowchart LR
-    agent["`**Agent 适配层**
-Kimi Code
-Claude Code
-Codex CLI
-...`"] --> core["`Legion Core`"]
-    core --> im["`**IM 适配层**
-Discord
-飞书
-Slack
-...`"]
+
+创建日期：YYYY-MM-DD
+最后更新：YYYY-MM-DD
 ```
 
-节点内部明细用 ASCII 树状图：
+- 新文档创建时，`创建日期` 与 `最后更新` 相同。
+- 每次对文档进行实质性修改后，更新 `最后更新` 日期。
+- 日期使用 `YYYY-MM-DD` 格式（例如 `2026-06-14`）。
 
-```text
-Legion Core
-├── Message Router
-├── Command Parser
-├── Session Manager
-└── State Store
-```
+## 3. 外部依赖源码阅读规范
 
-## 开发工作流规范
+当 Legion 需要与外部工具（如 Kimi Code CLI）的私有输出格式、协议或行为做对接时，**必须先把对应项目的源码 clone 到本地并阅读相关源码**，而不是仅依赖运行观察、二进制字符串搜索或社区二手资料。
 
-### 代码提交前
-
-每次提交前必须保证以下命令通过：
-
-```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run format:check
-```
-
-这些检查已通过 husky + lint-staged 在 `git commit` 时自动触发，但本地提前运行可以减少 amend/rebase 次数。
-
-### lint-staged 与 pre-commit
-
-- 提交时会自动对 staged 文件运行 `prettier --write` 和 `eslint --fix`。
-- 不要绕过 pre-commit（如 `git commit --no-verify`），除非明确知道自己在处理紧急特例。
-- 如果 pre-commit 自动修复了文件，需要重新 stage 并再次提交。
-
-### 格式化
-
-- 使用项目配置的 Prettier，不要依赖编辑器默认设置。
-- 不要手动调整引号、分号、换行等风格问题，交给 `npm run format`。
-
-## 调试脚本
-
-项目根目录下的 `scripts/` 存放临时调试脚本，不进入 MVP 核心代码路径。
-
-- `scripts/dev-info.md`：本地开发信息（Bot Token、Guild ID、Channel ID 等），已加入 `.gitignore`，不提交到仓库。
-- `scripts/test-discord.mjs`：快速验证 Discord Bot 登录、Guild 访问、Channel 创建等基础能力。
-
-使用方式：
-
-```bash
-node scripts/test-discord.mjs
-```
-
-该脚本会从 `scripts/dev-info.md` 读取 Token 和 Guild ID，不需要额外配置环境变量。
-
-## 提交信息规范
-
-采用 **Conventional Commits** 格式：
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-### type 说明
-
-| type | 用途 |
-|---|---|
-| `feat` | 新功能 |
-| `fix` | Bug 修复 |
-| `docs` | 文档变更（README、设计稿、注释） |
-| `style` | 不影响代码含义的格式调整（空格、分号等） |
-| `refactor` | 重构，既不修复 bug 也不添加功能 |
-| `perf` | 性能优化 |
-| `test` | 添加或修改测试 |
-| `chore` | 构建、工具链、依赖等杂项 |
-
-### scope 说明
-
-scope 可选，用于说明影响范围：
-
-- `core`：Legion Core
-- `agent`：Agent 适配层
-- `im`：IM 适配层
-- `discord`：Discord 具体实现
-- `config`：配置管理
-- `docs`：文档
-- `ci`：CI / 构建流程
-
-### 示例
-
-```
-feat(discord): add message router for channel and thread
-
-docs: update mvp design with workspace binding flow
-
-chore(ci): add github actions workflow
-```
+- 例如对接 Kimi Code CLI 的输出格式时，应 clone `https://github.com/MoonshotAI/kimi-code.git`（或确认当前使用的 fork/版本），找到 `apps/kimi-code/src/cli/run-prompt.ts` 等关键文件。
+- 阅读源码后，把关键结论（如 `PROMPT_BLOCK_BULLET = '• '`、`text` 模式下 tool call/result 为 no-op、`tool.progress` 直接写 stderr 等）记录到 `docs/` 下的开发记录中。
+- 如果源码结论与之前的启发式实现有冲突，优先按源码修正实现。

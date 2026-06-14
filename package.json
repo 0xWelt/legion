@@ -1,21 +1,23 @@
 {
-  "name": "legion",
+  "name": "legion-monorepo",
   "version": "0.1.0",
   "description": "Bridge layer between coding agents and IM platforms",
+  "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "echo 'No source to build yet.'",
-    "dev": "echo 'No entry point yet.'",
-    "start": "echo 'No build output yet.'",
-    "typecheck": "echo 'No TypeScript source yet.'",
+    "build": "tsc --build",
+    "dev": "tsx --tsconfig packages/legion/tsconfig.json packages/legion/src/bootstrap.ts",
+    "start": "node packages/legion/dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "echo 'No tests yet.'",
-    "test:watch": "echo 'No tests yet.'",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "keywords": [
@@ -30,9 +32,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {
-    "discord.js": "^14.18.0"
-  },
   "devDependencies": {
     "@types/node": "^22.13.0",
     "eslint": "^9.20.0",
@@ -44,6 +43,7 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.24.0",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.0.0"
   }
 }

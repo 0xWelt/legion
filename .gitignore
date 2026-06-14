@@ -31,9 +31,6 @@ coverage/
 *.swo
 *~
 
-# Local dev notes
-scripts/dev-info.md
-
 # OS
 .DS_Store
 Thumbs.db

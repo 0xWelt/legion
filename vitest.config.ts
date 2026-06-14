@@ -1,15 +1,25 @@
+import { resolve } from 'node:path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      legion: resolve(__dirname, 'packages/legion/src/index.ts'),
+      'legion-kimi-code': resolve(__dirname, 'packages/legion-kimi-code/src/index.ts'),
+      'legion-discord': resolve(__dirname, 'packages/legion-discord/src/index.ts'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: ['packages/*/tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
+      include: ['packages/*/src/**/*.ts'],
+      exclude: ['packages/*/src/**/*.test.ts', 'packages/*/src/**/*.d.ts'],
     },
   },
 });

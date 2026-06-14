@@ -1,0 +1,25 @@
+{
+  "name": "legion-discord",
+  "version": "0.1.0",
+  "description": "Discord IM provider for Legion",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "legion": "*",
+    "discord.js": "^14.18.0"
+  },
+  "keywords": [
+    "discord",
+    "im-bridge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

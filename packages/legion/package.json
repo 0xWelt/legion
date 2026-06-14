@@ -1,0 +1,26 @@
+{
+  "name": "legion",
+  "version": "0.1.0",
+  "description": "Legion core and bootstrap entry",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/bootstrap.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "legion-kimi-code": "*",
+    "legion-discord": "*"
+  },
+  "keywords": [
+    "coding-agent",
+    "im-bridge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

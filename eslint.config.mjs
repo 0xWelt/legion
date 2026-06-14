@@ -5,13 +5,13 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/', '**/*.d.ts'],
+    ignores: ['**/dist/', '**/node_modules/', 'coverage/', '**/*.d.ts'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettierConfig,
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts', '*.config.ts'],
+    files: ['packages/*/src/**/*.ts', 'packages/*/tests/**/*.ts', '*.config.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.eslint.json',
@@ -31,7 +31,7 @@ export default tseslint.config(
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
-      'no-console': 'warn',
+      'no-console': 'off',
     },
   },
   {
