@@ -1,6 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
       "legion": ["./packages/legion/src/index.ts"],
@@ -8,11 +10,11 @@
       "legion-discord": ["./packages/legion-discord/src/index.ts"]
     }
   },
-  "files": [],
+  "include": ["src/bootstrap.ts"],
+  "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "./packages/legion" },
     { "path": "./packages/legion-kimi-code" },
-    { "path": "./packages/legion-discord" },
-    { "path": "./tsconfig.bootstrap.json" }
+    { "path": "./packages/legion-discord" }
   ]
 }

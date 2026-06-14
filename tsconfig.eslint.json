@@ -1,9 +1,21 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "legion": ["./packages/legion/src/index.ts"],
+      "legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
+      "legion-discord": ["./packages/legion-discord/src/index.ts"]
+    }
   },
-  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "*.config.ts", "*.config.mjs"],
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/tests/**/*",
+    "src/**/*",
+    "*.config.ts",
+    "*.config.mjs"
+  ],
   "exclude": ["node_modules", "**/dist"]
 }

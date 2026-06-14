@@ -1,11 +1,13 @@
 import { registerKimiRunners } from 'legion-kimi-code';
 import { DiscordProvider } from 'legion-discord';
-import { loadConfig } from './config/loader.js';
-import { LegionCore } from './core/legion-core.js';
-import { COMMAND_DEFINITIONS } from './core/command-parser.js';
-import { DefaultAgentRunnerFactory } from './agent/factory.js';
-import { JsonStateStore } from './state/store.js';
-import type { IMCommandDefinition } from './im/types.js';
+import {
+  loadConfig,
+  LegionCore,
+  COMMAND_DEFINITIONS,
+  DefaultAgentRunnerFactory,
+  JsonStateStore,
+  type IMCommandDefinition,
+} from 'legion';
 
 function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {
   return COMMAND_DEFINITIONS.map((command) => {

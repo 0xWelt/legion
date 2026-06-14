@@ -1,8 +1,12 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "legion": ["../legion/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"],
