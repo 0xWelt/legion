@@ -90,6 +90,21 @@ npm run format:check
 - 使用项目配置的 Prettier，不要依赖编辑器默认设置。
 - 不要手动调整引号、分号、换行等风格问题，交给 `npm run format`。
 
+## 调试脚本
+
+项目根目录下的 `scripts/` 存放临时调试脚本，不进入 MVP 核心代码路径。
+
+- `scripts/dev-info.md`：本地开发信息（Bot Token、Guild ID、Channel ID 等），已加入 `.gitignore`，不提交到仓库。
+- `scripts/test-discord.mjs`：快速验证 Discord Bot 登录、Guild 访问、Channel 创建等基础能力。
+
+使用方式：
+
+```bash
+node scripts/test-discord.mjs
+```
+
+该脚本会从 `scripts/dev-info.md` 读取 Token 和 Guild ID，不需要额外配置环境变量。
+
 ## 提交信息规范
 
 采用 **Conventional Commits** 格式：
