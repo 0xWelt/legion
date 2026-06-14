@@ -1,0 +1,49 @@
+{
+  "name": "legion",
+  "version": "0.1.0",
+  "description": "Bridge layer between coding agents and IM platforms",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "echo 'No source to build yet.'",
+    "dev": "echo 'No entry point yet.'",
+    "start": "echo 'No build output yet.'",
+    "typecheck": "echo 'No TypeScript source yet.'",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "echo 'No tests yet.'",
+    "test:watch": "echo 'No tests yet.'",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "coding-agent",
+    "discord",
+    "im-bridge",
+    "kimi-code",
+    "claude-code"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.0.0",
+    "globals": "^15.15.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.4.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^3.0.0"
+  }
+}
