@@ -171,6 +171,13 @@ export class LegionCore {
             }
             case 'session':
             default: {
+              if (session.agentSessionId) {
+                await this.deps.imProvider.sendText(
+                  target,
+                  `当前 session 已与 ${session.agent} 的 agent session 绑定，无法切换到其它 agent。如需使用 ${command.name}，请新建 thread 或在新 workdir 中开始会话。`
+                );
+                break;
+              }
               this.sessionManager.setAgent(session.id, command.name);
               await this.deps.imProvider.sendText(
                 target,
@@ -266,7 +273,22 @@ export class LegionCore {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         this.logger.error('Agent run failed', { sessionId: session.id, error: message });
-        await this.deps.imProvider.sendText(target, `❌ ${message}`);
+        const errorEvent: AgentEvent = { type: 'error', message, fatal: true };
+        try {
+          await this.deps.imProvider.renderEvent(target, errorEvent, renderState);
+          await this.deps.imProvider.renderEvent(
+            target,
+            { type: 'complete', exitCode: 1 },
+            renderState
+          );
+        } catch (renderErr) {
+          const renderMessage = renderErr instanceof Error ? renderErr.message : String(renderErr);
+          this.logger.error('Failed to render error', {
+            sessionId: session.id,
+            error: renderMessage,
+          });
+          await this.deps.imProvider.sendText(target, `❌ ${message}`);
+        }
       } finally {
         this.sessionManager.setStatus(session.id, 'idle');
         await this.persist();

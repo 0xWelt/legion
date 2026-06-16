@@ -34,6 +34,7 @@ class FakeProvider implements IMProvider {
   readonly name = 'fake';
   readonly sent: Array<{ target: IMTarget; text: string }> = [];
   readonly embeds: Array<{ target: IMTarget; embed: unknown }> = [];
+  readonly rendered: AgentEvent[] = [];
   private handlers = {
     message: [] as Array<(msg: IMMessage) => void>,
     threadCreate: [] as Array<(thread: IMThread) => void>,
@@ -87,6 +88,7 @@ class FakeProvider implements IMProvider {
     event: AgentEvent,
     state: RenderState
   ): Promise<RenderState> {
+    this.rendered.push(event);
     if (event.type === 'text') {
       state.replyMessageRef = await this.sendText(_target, event.text);
     }
@@ -110,14 +112,19 @@ class FakeProvider implements IMProvider {
 class FakeRunner implements AgentRunner {
   readonly name = 'fake';
   private events: AgentEvent[];
+  private error?: Error;
 
-  constructor(events: AgentEvent[] = []) {
+  constructor(events: AgentEvent[] = [], error?: Error) {
     this.events = events;
+    this.error = error;
   }
 
   async *run(): AsyncIterable<AgentEvent> {
     for (const event of this.events) {
       yield event;
+    }
+    if (this.error) {
+      throw this.error;
     }
   }
 
@@ -233,6 +240,30 @@ describe('LegionCore', () => {
     await provider.emitMessage(makeMsg('write code'));
 
     expect(provider.sent.some((s) => s.text === 'done')).toBe(true);
+  });
+
+  it('renders runner exceptions as error events', async () => {
+    const provider = new FakeProvider();
+    const factory = new DefaultAgentRunnerFactory();
+    factory.register('kimi-code', () => new FakeRunner([], new Error('runner crashed')));
+    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
+    const core = new LegionCore({
+      config: makeConfig(),
+      imProvider: provider,
+      runnerFactory: factory,
+      stateStore: store,
+    });
+    await core.start();
+
+    await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
+    await provider.emitMessage(makeMsg('write code'));
+
+    expect(provider.rendered).toContainEqual({
+      type: 'error',
+      message: 'runner crashed',
+      fatal: true,
+    });
+    expect(provider.rendered).toContainEqual({ type: 'complete', exitCode: 1 });
   });
 
   it('selects runner based on defaultAgent config', async () => {

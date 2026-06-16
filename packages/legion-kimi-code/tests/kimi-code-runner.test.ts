@@ -9,6 +9,7 @@ vi.mock('node:child_process', () => ({
 
 interface MockProcess extends EventEmitter {
   stdout: Readable;
+  stderr: Readable;
   killed: boolean;
   exitCode: number | null;
   kill: (signal: string) => boolean;
@@ -16,8 +17,10 @@ interface MockProcess extends EventEmitter {
 
 function mockSpawn(lines: string[], exitCode = 0): MockProcess {
   const stdout = Readable.from(lines.join('\n'));
+  const stderr = Readable.from([]);
   const proc = new EventEmitter() as MockProcess;
   proc.stdout = stdout;
+  proc.stderr = stderr;
   proc.killed = false;
   proc.exitCode = null;
   proc.kill = vi.fn().mockImplementation(() => {

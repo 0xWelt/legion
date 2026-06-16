@@ -9,6 +9,7 @@ vi.mock('node:child_process', () => ({
 
 interface MockProcess extends EventEmitter {
   stdout: Readable;
+  stderr: Readable;
   killed: boolean;
   exitCode: number | null;
   kill: (signal: string) => boolean;
@@ -43,8 +44,10 @@ function resultEvent(
 
 function mockSpawn(lines: string[], exitCode = 0): MockProcess {
   const stdout = Readable.from(lines.join('\n'));
+  const stderr = Readable.from([]);
   const proc = new EventEmitter() as MockProcess;
   proc.stdout = stdout;
+  proc.stderr = stderr;
   proc.killed = false;
   proc.exitCode = null;
   proc.kill = vi.fn().mockImplementation(() => {
@@ -631,6 +634,52 @@ describe('ClaudeCodeRunner', () => {
             ],
           },
         }),
+        resultEvent('success'),
+      ]);
+      const runner = new ClaudeCodeRunner({ binary: 'claude' });
+      const events: unknown[] = [];
+      for await (const event of runner.run({ sessionId: 's1', workdir: '/tmp' }, 'hello')) {
+        events.push(event);
+      }
+      const toolCalls = events.filter((e) => (e as { type: string }).type === 'tool_call');
+      expect(toolCalls).toHaveLength(1);
+    });
+
+    it('does not duplicate tool_call when assistant event arrives before content_block_stop', async () => {
+      mockSpawn([
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'message_start',
+            message: { id: 'msg-1', role: 'assistant', content: [], model: 'claude' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'tool_use', id: 'tool-1', name: 'Read', input: {} },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'input_json_delta', partial_json: '{"file_path":"/tmp/a"}' },
+          },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/tmp/a' } },
+            ],
+          },
+        }),
+        JSON.stringify({ type: 'stream_event', event: { type: 'content_block_stop', index: 0 } }),
         resultEvent('success'),
       ]);
       const runner = new ClaudeCodeRunner({ binary: 'claude' });

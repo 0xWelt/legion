@@ -9,7 +9,7 @@ export type DiscordProviderOptions = DiscordConfig & {
   editDebounceMs?: number;
 };
 
-export function normalizeDiscordConfig(raw: unknown): DiscordConfig {
+export function normalizeDiscordConfig(raw: unknown): DiscordProviderOptions {
   const config = asRecord(raw);
   if (!config?.botToken || typeof config.botToken !== 'string') {
     throw new Error('Discord config missing botToken');
@@ -17,13 +17,17 @@ export function normalizeDiscordConfig(raw: unknown): DiscordConfig {
   if (!config?.allowedGuildId || typeof config.allowedGuildId !== 'string') {
     throw new Error('Discord config missing allowedGuildId');
   }
-  return {
+  const options: DiscordProviderOptions = {
     botToken: config.botToken,
     allowedGuildId: config.allowedGuildId,
   };
+  if (typeof config.editDebounceMs === 'number') {
+    options.editDebounceMs = config.editDebounceMs;
+  }
+  return options;
 }
 
-async function createDiscordProvider(config: DiscordConfig): Promise<IMProvider> {
+async function createDiscordProvider(config: DiscordProviderOptions): Promise<IMProvider> {
   const { DiscordProvider } = await import('./discord-provider.js');
   return new DiscordProvider(config);
 }
@@ -58,7 +62,7 @@ function isDiscordInstalled(): boolean {
   }
 }
 
-export const discordConfigContribution: ConfigContribution<DiscordConfig> = {
+export const discordConfigContribution: ConfigContribution<DiscordProviderOptions> = {
   key: 'discord',
   isInstalled: isDiscordInstalled,
   readEnv: readDiscordEnv,

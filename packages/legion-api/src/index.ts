@@ -29,6 +29,12 @@ export type {
   Workdir,
 } from './core/types.js';
 export type { AgentEvent, SessionInitEvent } from './core/types.js';
+export {
+  applyAgentEvent,
+  buildPlainTextContent,
+  createAccumulatedOutput,
+} from './im/event-accumulator.js';
+export type { AccumulatedOutput, OutputSegment } from './im/event-accumulator.js';
 export type {
   IMCommandDefinition,
   IMCommandOption,

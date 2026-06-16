@@ -47,10 +47,16 @@ export class KimiCodeRunner implements AgentRunner {
     const binary = this.config.binary ?? 'kimi';
     const timeoutMs = 300 * 1000;
 
+    const stderrChunks: Buffer[] = [];
+
     this.process = spawn(binary, args, {
       cwd,
       env: { ...process.env, ...this.config.env },
       stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    this.process.stderr!.on('data', (chunk: Buffer) => {
+      stderrChunks.push(chunk);
+      process.stderr.write(chunk);
     });
 
     const spawnError = new Promise<never>((_, reject) => {
@@ -81,6 +87,10 @@ export class KimiCodeRunner implements AgentRunner {
       }
 
       const exitCode = await this.waitForExit();
+      const stderr = Buffer.concat(stderrChunks).toString('utf-8').trim();
+      if (stderr) {
+        yield { type: 'error', message: stderr, fatal: true };
+      }
       yield { type: 'complete', exitCode };
     } finally {
       clearTimeout(timeout);

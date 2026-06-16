@@ -115,10 +115,16 @@ export class ClaudeCodeRunner implements AgentRunner {
     const binary = this.config.binary ?? 'claude';
     const timeoutMs = 300 * 1000;
 
+    const stderrChunks: Buffer[] = [];
+
     this.process = spawn(binary, args, {
       cwd,
       env: { ...process.env, ...this.config.env },
       stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    this.process.stderr!.on('data', (chunk: Buffer) => {
+      stderrChunks.push(chunk);
+      process.stderr.write(chunk);
     });
 
     const spawnError = new Promise<never>((_, reject) => {
@@ -151,6 +157,10 @@ export class ClaudeCodeRunner implements AgentRunner {
       }
 
       const exitCode = await this.waitForExit();
+      const stderr = Buffer.concat(stderrChunks).toString('utf-8').trim();
+      if (stderr) {
+        yield { type: 'error', message: stderr, fatal: true };
+      }
       yield { type: 'complete', exitCode };
     } finally {
       clearTimeout(timeout);
@@ -286,9 +296,13 @@ export class ClaudeCodeRunner implements AgentRunner {
       }
       case 'content_block_stop': {
         if (state.toolUseBlock) {
+          const { toolId } = state.toolUseBlock;
           const toolCall = this.buildToolCallFromStream(state.toolUseBlock);
-          state.emittedToolIds.add(state.toolUseBlock.toolId);
           state.toolUseBlock = undefined;
+          if (state.emittedToolIds.has(toolId)) {
+            return [];
+          }
+          state.emittedToolIds.add(toolId);
           if (toolCall) {
             return [toolCall];
           }

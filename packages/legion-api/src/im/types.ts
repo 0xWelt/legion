@@ -1,4 +1,5 @@
 import type { AgentEvent } from '../core/types.js';
+import type { AccumulatedOutput } from './event-accumulator.js';
 
 export interface IMCommandOption {
   name: string;
@@ -80,11 +81,17 @@ export interface IMEmbedField {
 
 export interface RenderState {
   replyMessageRef?: IMMessageRef;
+  /**
+   * Multiple message refs for providers that paginate a single agent response
+   * across several messages (e.g. Discord Components V2 splitting).
+   */
+  replyMessageRefs?: IMMessageRef[];
   toolMessageRefs: Map<string, IMMessageRef>;
-  thinkingMessageRef?: IMMessageRef;
-  thinkingText?: string;
-  pendingText?: string;
-  lastTextEditAt?: number;
+  textEditTimer?: NodeJS.Timeout;
   statusPrefix?: string;
-  hasToolCall?: boolean;
+  /**
+   * Unified accumulated output for providers that batch streaming events into
+   * a single message (e.g. Discord batch mode).
+   */
+  accumulatedOutput?: AccumulatedOutput;
 }

@@ -6,20 +6,28 @@ import {
   REST,
   Routes,
   type ChatInputCommandInteraction,
+  type MessageCreateOptions,
   type TextChannel,
   type ThreadChannel,
 } from 'discord.js';
+import type {
+  APIContainerComponent,
+  APIMessageTopLevelComponent,
+  APITextDisplayComponent,
+} from 'discord-api-types/v10';
 import { buildCommandContent, buildSlashCommands } from './discord-slash-commands.js';
 import type { DiscordProviderOptions } from './config.js';
+import { applyAgentEvent, createAccumulatedOutput } from 'legion-api';
 import type {
   AgentEvent,
   IMCommandDefinition,
+  IMEmbed,
   IMMessage,
   IMMessageRef,
   IMProvider,
   IMTarget,
   IMThread,
-  IMEmbed,
+  OutputSegment,
   RenderState,
 } from 'legion-api';
 
@@ -34,9 +42,14 @@ export class DiscordProvider implements IMProvider {
   private pendingInteractions = new Map<string, ChatInputCommandInteraction>();
   private commandDefinitions: IMCommandDefinition[] = [];
   private readonly editDebounceMs: number;
+  private readonly typingIntervals = new Map<string, NodeJS.Timeout>();
+  private readonly MAX_CONTENT_CHARS_PER_MESSAGE = 4000;
+  private readonly MAX_COMPONENTS_PER_CONTAINER = 10;
+  private readonly MAX_TOOL_RESULT_OUTPUT_CHARS = 950;
 
   constructor(private readonly options: DiscordProviderOptions) {
     this.editDebounceMs = options.editDebounceMs ?? 1000;
+    console.log(`[DiscordProvider] editDebounceMs=${this.editDebounceMs}`);
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
@@ -217,16 +230,286 @@ export class DiscordProvider implements IMProvider {
   async editText(ref: IMMessageRef, text: string): Promise<void> {
     const channel = await this.resolveChannel(ref);
     const message = await channel.messages.fetch(ref.messageId);
-    await message.edit(text.trim().slice(0, 2000));
+    await message.edit(text.trim());
   }
 
-  async sendEmbed(target: IMTarget, embed: IMEmbed): Promise<IMMessageRef> {
-    const channel = await this.resolveChannel(target);
-    const builder = this.buildEmbed(embed);
-    const options: { embeds: [EmbedBuilder]; reply?: { messageReference: string } } = {
-      embeds: [builder],
+  private textEditLocks = new WeakMap<RenderState, boolean>();
+
+  private startTextEditLoop(target: IMTarget, state: RenderState): void {
+    if (state.textEditTimer) {
+      return;
+    }
+    state.textEditTimer = setInterval(async () => {
+      if (this.textEditLocks.get(state)) {
+        return;
+      }
+      this.textEditLocks.set(state, true);
+      try {
+        await this.flushBuffer(target, state);
+      } catch (err) {
+        console.error('Failed to render Discord batch', err);
+      } finally {
+        this.textEditLocks.set(state, false);
+      }
+    }, this.editDebounceMs);
+  }
+
+  private stopTextEditLoop(state: RenderState): void {
+    if (state.textEditTimer) {
+      clearInterval(state.textEditTimer);
+      state.textEditTimer = undefined;
+    }
+  }
+
+  private async flushBuffer(target: IMTarget, state: RenderState): Promise<void> {
+    if (!state.accumulatedOutput || state.accumulatedOutput.segments.length === 0) {
+      return;
+    }
+    const pages = this.buildPages(state.accumulatedOutput.segments);
+    if (pages.length === 0) {
+      return;
+    }
+
+    state.replyMessageRefs ??= [];
+    const refs = state.replyMessageRefs;
+
+    console.log(`[DiscordProvider] flush pages=${pages.length} existingRefs=${refs.length}`);
+
+    for (let i = 0; i < pages.length; i++) {
+      const components = pages[i];
+      if (i < refs.length) {
+        await this.editComponents(refs[i], components);
+      } else {
+        const shouldReply = refs.length === 0 && i === 0;
+        const ref = await this.sendComponents(target, components, shouldReply);
+        refs.push(ref);
+      }
+    }
+
+    while (refs.length > pages.length) {
+      const ref = refs.pop();
+      if (ref) {
+        try {
+          await this.deleteMessage(ref);
+        } catch (err) {
+          console.error('[DiscordProvider] failed to delete extra page', err);
+        }
+      }
+    }
+  }
+
+  private buildPages(segments: OutputSegment[]): APIMessageTopLevelComponent[][] {
+    const units = this.buildUnits(segments);
+    if (units.length === 0) {
+      return [];
+    }
+
+    const items = this.buildTopLevelItems(units);
+    return this.groupItemsIntoPages(items);
+  }
+
+  private buildUnits(
+    segments: OutputSegment[]
+  ): Array<{ content: string; segmentType: OutputSegment['type'] }> {
+    const units: Array<{ content: string; segmentType: OutputSegment['type'] }> = [];
+    for (const seg of segments) {
+      const content = this.formatSegment(seg);
+      if (content.length === 0) {
+        continue;
+      }
+      if (seg.type === 'tool_call' && content.length > this.MAX_CONTENT_CHARS_PER_MESSAGE) {
+        units.push(...this.splitToolCallContent(content));
+        continue;
+      }
+      if (content.length <= this.MAX_CONTENT_CHARS_PER_MESSAGE) {
+        units.push({ content, segmentType: seg.type });
+      } else {
+        for (let i = 0; i < content.length; i += this.MAX_CONTENT_CHARS_PER_MESSAGE) {
+          units.push({
+            content: content.slice(i, i + this.MAX_CONTENT_CHARS_PER_MESSAGE),
+            segmentType: seg.type,
+          });
+        }
+      }
+    }
+    return units;
+  }
+
+  private splitToolCallContent(
+    content: string
+  ): Array<{ content: string; segmentType: 'tool_call' }> {
+    const maxChunk = this.MAX_CONTENT_CHARS_PER_MESSAGE;
+    const firstNewline = content.indexOf('\n');
+    if (firstNewline === -1) {
+      const result: Array<{ content: string; segmentType: 'tool_call' }> = [];
+      for (let i = 0; i < content.length; i += this.MAX_CONTENT_CHARS_PER_MESSAGE) {
+        result.push({
+          content: content.slice(i, i + this.MAX_CONTENT_CHARS_PER_MESSAGE),
+          segmentType: 'tool_call',
+        });
+      }
+      return result;
+    }
+
+    const header = content.slice(0, firstNewline);
+    const body = content.slice(firstNewline + 1);
+    const bodyLines = body.split('\n');
+    const opener = bodyLines[0];
+    const closer = bodyLines[bodyLines.length - 1];
+
+    if (opener?.startsWith('```') && closer === '```' && bodyLines.length >= 2) {
+      const inner = bodyLines.slice(1, -1).join('\n');
+      const chunkInnerMax = maxChunk - opener.length - closer.length - 2; // newlines
+      const result: Array<{ content: string; segmentType: 'tool_call' }> = [
+        { content: header, segmentType: 'tool_call' },
+      ];
+      for (let i = 0; i < inner.length; i += chunkInnerMax) {
+        const chunk = inner.slice(i, i + chunkInnerMax);
+        result.push({
+          content: `${opener}\n${chunk}\n${closer}`,
+          segmentType: 'tool_call',
+        });
+      }
+      return result;
+    }
+
+    const result: Array<{ content: string; segmentType: 'tool_call' }> = [
+      { content: header, segmentType: 'tool_call' },
+    ];
+    for (let i = 0; i < body.length; i += this.MAX_CONTENT_CHARS_PER_MESSAGE) {
+      result.push({
+        content: body.slice(i, i + this.MAX_CONTENT_CHARS_PER_MESSAGE),
+        segmentType: 'tool_call',
+      });
+    }
+    return result;
+  }
+
+  private buildTopLevelItems(
+    units: Array<{ content: string; segmentType: OutputSegment['type'] }>
+  ): Array<{ component: APIMessageTopLevelComponent; length: number }> {
+    const items: Array<{ component: APIMessageTopLevelComponent; length: number }> = [];
+    let currentContainer: { component: APIContainerComponent; length: number } | null = null;
+
+    const flushContainer = () => {
+      if (currentContainer) {
+        items.push(currentContainer);
+        currentContainer = null;
+      }
     };
-    if (target.replyToMessageId) {
+
+    for (const unit of units) {
+      if (unit.segmentType === 'text') {
+        flushContainer();
+        items.push({
+          component: this.createTextDisplay(unit.content),
+          length: unit.content.length,
+        });
+        continue;
+      }
+
+      const accentColor = this.segmentAccentColor(unit.segmentType);
+      const needsNewContainer =
+        !currentContainer ||
+        currentContainer.component.components.length >= this.MAX_COMPONENTS_PER_CONTAINER ||
+        currentContainer.length + unit.content.length > this.MAX_CONTENT_CHARS_PER_MESSAGE ||
+        currentContainer.component.accent_color !== accentColor;
+
+      if (needsNewContainer) {
+        flushContainer();
+        currentContainer = {
+          component: this.createContainer([], accentColor),
+          length: 0,
+        };
+      }
+      currentContainer!.component.components.push(this.createTextDisplay(unit.content));
+      currentContainer!.length += unit.content.length;
+    }
+
+    flushContainer();
+    return items;
+  }
+
+  private groupItemsIntoPages(
+    items: Array<{ component: APIMessageTopLevelComponent; length: number }>
+  ): APIMessageTopLevelComponent[][] {
+    const pages: APIMessageTopLevelComponent[][] = [];
+    let currentPage: APIMessageTopLevelComponent[] = [];
+    let currentLength = 0;
+
+    for (const { component, length } of items) {
+      if (
+        currentPage.length >= this.MAX_COMPONENTS_PER_CONTAINER ||
+        (currentPage.length > 0 && currentLength + length > this.MAX_CONTENT_CHARS_PER_MESSAGE)
+      ) {
+        pages.push(currentPage);
+        currentPage = [];
+        currentLength = 0;
+      }
+      currentPage.push(component);
+      currentLength += length;
+    }
+
+    if (currentPage.length > 0) {
+      pages.push(currentPage);
+    }
+
+    return pages;
+  }
+
+  private segmentAccentColor(segmentType: Exclude<OutputSegment['type'], 'text'>): number {
+    switch (segmentType) {
+      case 'thinking':
+        return 0x3498db;
+      case 'tool_call':
+        return 0xf39c12;
+      case 'tool_result':
+        return 0x2ecc71;
+      case 'error':
+        return 0xff0000;
+    }
+  }
+
+  private createTextDisplay(content: string): APITextDisplayComponent {
+    return { type: 10 as const, content };
+  }
+
+  private createContainer(
+    components: APITextDisplayComponent[],
+    accentColor: number
+  ): APIContainerComponent {
+    return { type: 17 as const, components, accent_color: accentColor };
+  }
+
+  private formatSegment(seg: OutputSegment): string {
+    switch (seg.type) {
+      case 'text':
+        return seg.content;
+      case 'thinking':
+        return `💭 ${seg.content}`;
+      case 'tool_call':
+        return `🔧 ${seg.toolName}\n${this.formatToolInput(seg.input)}`;
+      case 'tool_result': {
+        const toolName = this.toolNames.get(seg.toolId) ?? seg.toolId;
+        const output = this.truncateTail(seg.output, this.MAX_TOOL_RESULT_OUTPUT_CHARS);
+        return `✅ ${toolName}\n\`\`\`text\n${output}\n\`\`\``;
+      }
+      case 'error':
+        return `❌ ${seg.message}`;
+    }
+  }
+
+  private async sendComponents(
+    target: IMTarget,
+    components: APIMessageTopLevelComponent[],
+    reply: boolean
+  ): Promise<IMMessageRef> {
+    const channel = await this.resolveChannel(target);
+    const options: Record<string, unknown> = {
+      components,
+      flags: 1 << 15, // MessageFlags.IsComponentsV2
+    };
+    if (reply && target.replyToMessageId) {
       options.reply = { messageReference: target.replyToMessageId };
     }
     const msg = await this.sendWithFallback(channel, options);
@@ -235,98 +518,105 @@ export class DiscordProvider implements IMProvider {
 
   private async sendWithFallback(
     channel: TextChannel | ThreadChannel,
-    options: { content?: string; embeds?: [EmbedBuilder]; reply?: { messageReference: string } }
+    options: Record<string, unknown>
   ): Promise<{ id: string }> {
     try {
-      return await channel.send(options);
+      return await channel.send(options as MessageCreateOptions);
     } catch (error) {
       const shouldFallback = options.reply && error instanceof Error;
       if (shouldFallback) {
         const { reply: _reply, ...fallbackOptions } = options;
-        return await channel.send(fallbackOptions);
+        return await channel.send(fallbackOptions as MessageCreateOptions);
       }
       throw error;
     }
   }
 
-  async editEmbed(ref: IMMessageRef, embed: IMEmbed): Promise<void> {
+  private async editComponents(
+    ref: IMMessageRef,
+    components: APIMessageTopLevelComponent[]
+  ): Promise<void> {
     const channel = await this.resolveChannel(ref);
     const message = await channel.messages.fetch(ref.messageId);
-    const builder = this.buildEmbed(embed);
-    await message.edit({ embeds: [builder] });
+    await message.edit({
+      components,
+      flags: 1 << 15, // MessageFlags.IsComponentsV2
+    });
+  }
+
+  private async deleteMessage(ref: IMMessageRef): Promise<void> {
+    const channel = await this.resolveChannel(ref);
+    const message = await channel.messages.fetch(ref.messageId);
+    await message.delete();
+  }
+
+  private truncateTail(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+    const prefix = '...';
+    return prefix + text.slice(text.length - (maxLength - prefix.length));
   }
 
   async sendTyping(target: IMTarget): Promise<void> {
+    const key = this.targetKey(target);
+    if (this.typingIntervals.has(key)) {
+      return;
+    }
+
     const channel = await this.resolveChannel(target);
     await channel.sendTyping();
+
+    const interval = setInterval(async () => {
+      try {
+        await channel.sendTyping();
+      } catch (err) {
+        console.error('[DiscordProvider] sendTyping failed', err);
+        this.stopTyping(target);
+      }
+    }, 8000);
+
+    this.typingIntervals.set(key, interval);
+  }
+
+  private stopTyping(target: IMTarget): void {
+    const key = this.targetKey(target);
+    const interval = this.typingIntervals.get(key);
+    if (interval) {
+      clearInterval(interval);
+      this.typingIntervals.delete(key);
+    }
+  }
+
+  private targetKey(target: IMTarget): string {
+    return target.threadId ?? target.channelId;
   }
 
   async renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState> {
     switch (event.type) {
-      case 'text': {
-        const trimmed = event.text.trim();
-        if (!trimmed) {
-          break;
-        }
-        // After a tool round, start a new message for the summary instead of
-        // editing the pre-tool text.
-        if (!state.replyMessageRef || state.hasToolCall) {
-          state.replyMessageRef = await this.sendText(target, trimmed);
-          state.lastTextEditAt = Date.now();
-          state.pendingText = undefined;
-          state.hasToolCall = false;
-          break;
-        }
-
-        state.pendingText = trimmed;
-        const now = Date.now();
-        if (!state.lastTextEditAt || now - state.lastTextEditAt >= this.editDebounceMs) {
-          await this.editText(state.replyMessageRef, trimmed);
-          state.lastTextEditAt = now;
-          state.pendingText = undefined;
-        }
-        break;
-      }
-      case 'tool_call': {
-        this.toolNames.set(event.toolId, event.toolName);
-        const params = this.formatToolInput(event.input);
-        const displayName = event.toolName === 'unknown' ? '工具调用' : event.toolName;
-        await this.sendText(target, `🔧 ${displayName}\n${params}`);
-        state.hasToolCall = true;
-        break;
-      }
-      case 'tool_call_delta': {
-        // Discord renders the finalized tool_call once JSON accumulation completes.
-        break;
-      }
-      case 'tool_result': {
-        const toolName = this.toolNames.get(event.toolId) ?? event.toolId;
-        const displayName = toolName === 'unknown' ? '原始输出' : `${toolName} ✅`;
-        const output = event.output.slice(0, 1800);
-        await this.sendText(target, `🔧 ${displayName}\n\`\`\`text\n${output}\n\`\`\``);
-        break;
-      }
+      case 'text':
+      case 'thinking':
+      case 'tool_call':
+      case 'tool_call_delta':
+      case 'tool_result':
       case 'error': {
-        await this.sendText(target, `❌ ${event.message}`);
-        break;
-      }
-      case 'thinking': {
-        const delta = event.delta ?? event.text;
-        if (!delta) break;
-        state.thinkingText = state.thinkingText ? `${state.thinkingText}${delta}` : delta;
-        const content = `💭 ${state.thinkingText}`.slice(0, 2000);
-        if (!state.thinkingMessageRef) {
-          state.thinkingMessageRef = await this.sendText(target, content);
+        state.accumulatedOutput ??= createAccumulatedOutput();
+        applyAgentEvent(state.accumulatedOutput, event);
+        if (event.type === 'tool_call' || event.type === 'tool_call_delta') {
+          this.toolNames.set(event.toolId, event.toolName);
+        }
+        if (this.editDebounceMs <= 0) {
+          await this.flushBuffer(target, state);
         } else {
-          await this.editText(state.thinkingMessageRef, content);
+          this.startTextEditLoop(target, state);
         }
         break;
       }
       case 'complete': {
-        if (state.replyMessageRef && state.pendingText !== undefined) {
-          await this.editText(state.replyMessageRef, state.pendingText);
-          state.pendingText = undefined;
-        }
+        this.stopTextEditLoop(state);
+        await this.flushBuffer(target, state);
+        state.accumulatedOutput = undefined;
+        this.stopTyping(target);
         break;
       }
       case 'session_init':
@@ -357,6 +647,9 @@ export class DiscordProvider implements IMProvider {
     if (input === undefined || input === null) {
       return '';
     }
+    if (typeof input === 'string') {
+      return '```json\n' + input + '\n```';
+    }
     if (typeof input !== 'object') {
       return String(input);
     }
@@ -364,7 +657,7 @@ export class DiscordProvider implements IMProvider {
     if (entries.length === 0) {
       return '';
     }
-    return '```json\n' + JSON.stringify(input, null, 2).slice(0, 1500) + '\n```';
+    return '```json\n' + JSON.stringify(input, null, 2) + '\n```';
   }
 
   private buildWorkspaceGuide(): string {
@@ -375,6 +668,26 @@ export class DiscordProvider implements IMProvider {
       '- 需要独立上下文时，右键消息 → 创建 Thread',
       '- 查看可用命令：`/help`',
     ].join('\n');
+  }
+
+  async sendEmbed(target: IMTarget, embed: IMEmbed): Promise<IMMessageRef> {
+    const channel = await this.resolveChannel(target);
+    const builder = this.buildEmbed(embed);
+    const options: { embeds: [EmbedBuilder]; reply?: { messageReference: string } } = {
+      embeds: [builder],
+    };
+    if (target.replyToMessageId) {
+      options.reply = { messageReference: target.replyToMessageId };
+    }
+    const msg = await this.sendWithFallback(channel, options);
+    return this.toRef(target, msg.id);
+  }
+
+  async editEmbed(ref: IMMessageRef, embed: IMEmbed): Promise<void> {
+    const channel = await this.resolveChannel(ref);
+    const message = await channel.messages.fetch(ref.messageId);
+    const builder = this.buildEmbed(embed);
+    await message.edit({ embeds: [builder] });
   }
 
   private buildEmbed(embed: IMEmbed): EmbedBuilder {
