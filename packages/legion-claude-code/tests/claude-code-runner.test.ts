@@ -513,6 +513,135 @@ describe('ClaudeCodeRunner', () => {
       ]);
     });
 
+    it('emits tool_call_delta and final tool_call from input_json_delta streaming', async () => {
+      mockSpawn([
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'message_start',
+            message: { id: 'msg-1', role: 'assistant', content: [], model: 'claude' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'tool_use', id: 'tool-1', name: 'Bash', input: {} },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'input_json_delta', partial_json: '{"command":"echo' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'input_json_delta', partial_json: ' hello"}' },
+          },
+        }),
+        JSON.stringify({ type: 'stream_event', event: { type: 'content_block_stop', index: 0 } }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'echo hello' } },
+            ],
+          },
+        }),
+        resultEvent('success'),
+      ]);
+      const runner = new ClaudeCodeRunner({ binary: 'claude' });
+      const events: unknown[] = [];
+      for await (const event of runner.run({ sessionId: 's1', workdir: '/tmp' }, 'hello')) {
+        events.push(event);
+      }
+      expect(events).toEqual([
+        {
+          type: 'tool_call_delta',
+          toolId: 'tool-1',
+          toolName: 'Bash',
+          partialInput: '{"command":"echo',
+          delta: '{"command":"echo',
+        },
+        {
+          type: 'tool_call_delta',
+          toolId: 'tool-1',
+          toolName: 'Bash',
+          partialInput: '{"command":"echo hello"}',
+          delta: ' hello"}',
+        },
+        {
+          type: 'tool_call',
+          toolId: 'tool-1',
+          toolName: 'Bash',
+          input: { command: 'echo hello' },
+        },
+        {
+          type: 'usage',
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          costUsd: 0,
+        },
+        { type: 'complete', exitCode: 0 },
+      ]);
+    });
+
+    it('does not duplicate tool_call when full assistant event follows streamed tool_use', async () => {
+      mockSpawn([
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'message_start',
+            message: { id: 'msg-1', role: 'assistant', content: [], model: 'claude' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'tool_use', id: 'tool-1', name: 'Read', input: {} },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'input_json_delta', partial_json: '{"file_path":"/tmp/a"}' },
+          },
+        }),
+        JSON.stringify({ type: 'stream_event', event: { type: 'content_block_stop', index: 0 } }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/tmp/a' } },
+            ],
+          },
+        }),
+        resultEvent('success'),
+      ]);
+      const runner = new ClaudeCodeRunner({ binary: 'claude' });
+      const events: unknown[] = [];
+      for await (const event of runner.run({ sessionId: 's1', workdir: '/tmp' }, 'hello')) {
+        events.push(event);
+      }
+      const toolCalls = events.filter((e) => (e as { type: string }).type === 'tool_call');
+      expect(toolCalls).toHaveLength(1);
+    });
+
     it('emits thinking deltas from stream_event', async () => {
       mockSpawn([
         JSON.stringify({

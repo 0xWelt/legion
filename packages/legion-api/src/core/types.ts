@@ -21,6 +21,7 @@ export interface Session {
 export type AgentEvent =
   | TextEvent
   | ToolCallEvent
+  | ToolCallDeltaEvent
   | ToolResultEvent
   | ThinkingEvent
   | SessionInitEvent
@@ -39,6 +40,14 @@ export interface ToolCallEvent {
   toolId: string;
   toolName: string;
   input: unknown;
+}
+
+export interface ToolCallDeltaEvent {
+  type: 'tool_call_delta';
+  toolId: string;
+  toolName: string;
+  partialInput: string;
+  delta: string;
 }
 
 export interface ToolResultEvent {

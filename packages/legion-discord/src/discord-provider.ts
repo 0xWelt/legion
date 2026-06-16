@@ -295,6 +295,10 @@ export class DiscordProvider implements IMProvider {
         state.hasToolCall = true;
         break;
       }
+      case 'tool_call_delta': {
+        // Discord renders the finalized tool_call once JSON accumulation completes.
+        break;
+      }
       case 'tool_result': {
         const toolName = this.toolNames.get(event.toolId) ?? event.toolId;
         const displayName = toolName === 'unknown' ? '原始输出' : `${toolName} ✅`;

@@ -43,6 +43,10 @@ export function applyEvent(state: CardState, event: AgentEvent): CardState {
       state.toolCalls.push(`${displayName}\n${params}`.trim());
       break;
     }
+    case 'tool_call_delta': {
+      // Lark renders the finalized tool_call once JSON accumulation completes.
+      break;
+    }
     case 'tool_result': {
       const toolName = event.toolId;
       state.toolResults.push(`${toolName}\n${event.output}`);

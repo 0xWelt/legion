@@ -99,6 +99,8 @@ type ClaudeEvent =
 interface StreamState {
   textBuffer: string;
   thinkingBuffer: string;
+  toolUseBlock?: { toolId: string; toolName: string; partialInput: string };
+  emittedToolIds: Set<string>;
 }
 
 export class ClaudeCodeRunner implements AgentRunner {
@@ -131,7 +133,7 @@ export class ClaudeCodeRunner implements AgentRunner {
       this.kill();
     }, timeoutMs);
 
-    const state: StreamState = { textBuffer: '', thinkingBuffer: '' };
+    const state: StreamState = { textBuffer: '', thinkingBuffer: '', emittedToolIds: new Set() };
 
     try {
       const lines = this.readLines(this.process.stdout!);
@@ -248,6 +250,12 @@ export class ClaudeCodeRunner implements AgentRunner {
           state.textBuffer = '';
         } else if (event.content_block?.type === 'thinking') {
           state.thinkingBuffer = '';
+        } else if (event.content_block?.type === 'tool_use') {
+          state.toolUseBlock = {
+            toolId: event.content_block.id,
+            toolName: event.content_block.name,
+            partialInput: '',
+          };
         }
         return [];
       }
@@ -262,10 +270,54 @@ export class ClaudeCodeRunner implements AgentRunner {
           state.thinkingBuffer += delta.thinking;
           return [{ type: 'thinking', text: state.thinkingBuffer, delta: delta.thinking }];
         }
+        if (delta.type === 'input_json_delta' && state.toolUseBlock) {
+          state.toolUseBlock.partialInput += delta.partial_json;
+          return [
+            {
+              type: 'tool_call_delta',
+              toolId: state.toolUseBlock.toolId,
+              toolName: state.toolUseBlock.toolName,
+              partialInput: state.toolUseBlock.partialInput,
+              delta: delta.partial_json,
+            },
+          ];
+        }
+        return [];
+      }
+      case 'content_block_stop': {
+        if (state.toolUseBlock) {
+          const toolCall = this.buildToolCallFromStream(state.toolUseBlock);
+          state.emittedToolIds.add(state.toolUseBlock.toolId);
+          state.toolUseBlock = undefined;
+          if (toolCall) {
+            return [toolCall];
+          }
+        }
         return [];
       }
       default:
         return [];
+    }
+  }
+
+  private buildToolCallFromStream(
+    toolUseBlock: NonNullable<StreamState['toolUseBlock']>
+  ): AgentEvent | undefined {
+    try {
+      const input = JSON.parse(toolUseBlock.partialInput) as unknown;
+      return {
+        type: 'tool_call',
+        toolId: toolUseBlock.toolId,
+        toolName: toolUseBlock.toolName,
+        input: input ?? {},
+      };
+    } catch {
+      return {
+        type: 'tool_call',
+        toolId: toolUseBlock.toolId,
+        toolName: toolUseBlock.toolName,
+        input: {},
+      };
     }
   }
 
@@ -284,12 +336,15 @@ export class ClaudeCodeRunner implements AgentRunner {
           events.push({ type: 'text', text: block.text });
         }
       } else if (block.type === 'tool_use') {
-        events.push({
-          type: 'tool_call',
-          toolId: block.id,
-          toolName: block.name,
-          input: block.input ?? {},
-        });
+        if (!state.emittedToolIds.has(block.id)) {
+          events.push({
+            type: 'tool_call',
+            toolId: block.id,
+            toolName: block.name,
+            input: block.input ?? {},
+          });
+          state.emittedToolIds.add(block.id);
+        }
       }
     }
     return events;
