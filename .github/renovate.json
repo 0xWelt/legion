@@ -4,7 +4,6 @@
     "config:best-practices",
     ":automergePatch",
     ":automergeMinor",
-    ":disableAutomergeMajor",
     ":semanticCommits",
     ":prHourlyLimit2",
     ":prConcurrentLimit10"
