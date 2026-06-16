@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "husky"
+    "prepare": "lefthook install"
   },
   "keywords": [
     "coding-agent",
@@ -37,8 +37,7 @@
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.0.0",
     "globals": "^15.15.0",
-    "husky": "^9.1.0",
-    "lint-staged": "^15.4.0",
+    "lefthook": "^1.11.0",
     "prettier": "^3.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
