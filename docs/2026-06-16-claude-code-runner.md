@@ -126,7 +126,6 @@ packages/legion-claude-code/
 ## 后续可改进
 
 - 支持 `--permission-mode` 等额外参数透传。
-- 如果未来需要非流式场景，可考虑增加 `claude-code-text` runner。
 
 ---
 
