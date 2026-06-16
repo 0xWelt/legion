@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "build": "tsc --build",
-    "dev": "tsx --tsconfig tsconfig.json src/bootstrap.ts",
-    "start": "node dist/bootstrap.js",
+    "dev": "tsx packages/legion/src/bootstrap.ts",
+    "start": "node packages/legion/dist/bootstrap.js",
     "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

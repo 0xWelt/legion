@@ -10,8 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion": "*",
+    "legion-api": "*",
     "discord.js": "^14.18.0"
+  },
+  "devDependencies": {
+    "legion": "*"
   },
   "keywords": [
     "discord",

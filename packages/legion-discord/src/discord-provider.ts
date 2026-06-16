@@ -10,6 +10,7 @@ import {
   type ThreadChannel,
 } from 'discord.js';
 import { buildCommandContent, buildSlashCommands } from './discord-slash-commands.js';
+import type { DiscordProviderOptions } from './config.js';
 import type {
   AgentEvent,
   IMCommandDefinition,
@@ -20,13 +21,7 @@ import type {
   IMThread,
   IMEmbed,
   RenderState,
-} from 'legion';
-
-export interface DiscordProviderOptions {
-  botToken: string;
-  allowedGuildId: string;
-  editDebounceMs?: number;
-}
+} from 'legion-api';
 
 export class DiscordProvider implements IMProvider {
   readonly name = 'discord';

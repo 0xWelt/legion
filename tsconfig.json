@@ -1,18 +1,21 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
+      "legion-api": ["./packages/legion-api/src/index.ts"],
       "legion": ["./packages/legion/src/index.ts"],
       "legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
-      "legion-discord": ["./packages/legion-discord/src/index.ts"]
+      "legion-discord": ["./packages/legion-discord/src/index.ts"],
+      "legion-lark": ["./packages/legion-lark/src/index.ts"]
     }
   },
   "files": [],
   "references": [
+    { "path": "./packages/legion-api" },
     { "path": "./packages/legion" },
     { "path": "./packages/legion-kimi-code" },
     { "path": "./packages/legion-discord" },
+    { "path": "./packages/legion-lark" },
     { "path": "./tsconfig.bootstrap.json" }
   ]
 }

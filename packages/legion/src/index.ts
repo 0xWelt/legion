@@ -6,13 +6,13 @@ export type {
   RunnerState,
   SessionContext,
 } from './agent/types.js';
-export type {
-  AgentConfigEntry,
-  DiscordConfig,
-  LegionConfig,
-  StateStoreConfig,
-} from './config/schema.js';
+export type { AgentConfigEntry, LegionConfig, StateStoreConfig } from './config/schema.js';
 export { DEFAULT_CONFIG } from './config/schema.js';
+export type {
+  AgentContribution,
+  ConfigContribution,
+  PromptContext,
+} from './config/contribution.js';
 export { DEFAULT_CONFIG_PATH, loadConfig, saveConfig } from './config/loader.js';
 export { CommandParser, COMMAND_DEFINITIONS } from './core/command-parser.js';
 export type { Command } from './core/command-parser.js';

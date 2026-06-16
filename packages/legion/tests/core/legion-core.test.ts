@@ -161,7 +161,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -184,7 +183,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -204,7 +202,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -226,7 +223,6 @@ describe('LegionCore', () => {
       const store = new JsonStateStore({ path: join(tempDir, `state-${runner}.json`) });
       const core = new LegionCore({
         config: makeConfig(runner),
-        allowedGuildId: 'guild',
         imProvider: provider,
         runnerFactory: factory,
         stateStore: store,
@@ -247,7 +243,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core1 = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -258,7 +253,6 @@ describe('LegionCore', () => {
     const provider2 = new FakeProvider();
     const core2 = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider2,
       runnerFactory: factory,
       stateStore: store,
@@ -275,7 +269,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -298,7 +291,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -320,7 +312,6 @@ describe('LegionCore', () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,
@@ -344,7 +335,6 @@ describe('LegionCore', () => {
     await writeFile(configPath, JSON.stringify(makeConfig()), 'utf8');
     const core = new LegionCore({
       config: makeConfig(),
-      allowedGuildId: 'guild',
       configPath,
       imProvider: provider,
       runnerFactory: factory,
@@ -371,7 +361,6 @@ describe('LegionCore', () => {
         defaultAgent: 'kimi-code',
         stateStore: { path: ':memory:' },
       },
-      allowedGuildId: 'guild',
       imProvider: provider,
       runnerFactory: factory,
       stateStore: store,

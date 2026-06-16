@@ -1,7 +1,6 @@
-export interface Logger {
-  info(message: string, meta?: Record<string, unknown>): void;
-  error(message: string, meta?: Record<string, unknown>): void;
-}
+import type { Logger } from 'legion-api';
+
+export type { Logger } from 'legion-api';
 
 export class ConsoleLogger implements Logger {
   info(message: string, meta?: Record<string, unknown>): void {

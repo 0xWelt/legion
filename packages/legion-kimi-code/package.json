@@ -10,6 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "legion-api": "*"
+  },
+  "devDependencies": {
     "legion": "*"
   },
   "keywords": [

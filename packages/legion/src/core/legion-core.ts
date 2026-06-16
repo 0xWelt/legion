@@ -15,7 +15,6 @@ import { InMemoryWorkdirManager } from './workdir-manager.js';
 export interface LegionCoreDeps {
   config: LegionConfig;
   configPath?: string;
-  allowedGuildId: string;
   imProvider: IMProvider;
   runnerFactory: AgentRunnerFactory;
   stateStore: StateStore;
@@ -39,7 +38,6 @@ export class LegionCore {
       workdirManager: this.workdirManager,
       sessionManager: this.sessionManager,
       runnerFactory: deps.runnerFactory,
-      allowedGuildId: deps.allowedGuildId,
       defaultAgent: this.resolveDefaultAgent(),
     });
   }
@@ -105,12 +103,7 @@ export class LegionCore {
             await this.deps.imProvider.sendText(target, validation.reason);
             break;
           }
-          this.workdirManager.bind(
-            session.workdirId,
-            session.workdirId,
-            command.path,
-            this.deps.allowedGuildId
-          );
+          this.workdirManager.bind(session.workdirId, session.workdirId, command.path);
           this.logger.info('Workdir bound', {
             workdirId: session.workdirId,
             path: command.path,
@@ -374,21 +367,6 @@ export class LegionCore {
       }
     }
 
-    const agentAliases: Record<string, string> = {
-      kimi: 'kimi-code',
-      'kimi-stream-json': 'kimi-code',
-      'kimi-text': 'kimi-code-text',
-    };
-    const mapAgent = (agent: string): string => agentAliases[agent] ?? agent;
-
-    for (const workdir of Object.values(legacy.workdirs ?? {})) {
-      if (workdir.defaultAgent) {
-        workdir.defaultAgent = mapAgent(workdir.defaultAgent);
-      }
-    }
-    for (const session of Object.values(legacy.sessions ?? {})) {
-      session.agent = mapAgent(session.agent);
-    }
     return {
       workdirs: legacy.workdirs ?? {},
       sessions: legacy.sessions ?? {},

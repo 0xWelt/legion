@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from 'legion';
+import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from 'legion-api';
 
 interface Queue {
   events: AgentEvent[];

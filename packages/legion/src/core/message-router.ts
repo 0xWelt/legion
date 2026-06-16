@@ -23,7 +23,6 @@ export interface MessageRouterDeps {
   workdirManager: WorkdirManager;
   sessionManager: SessionManager;
   runnerFactory: AgentRunnerFactory;
-  allowedGuildId: string;
   defaultAgent: string;
 }
 

@@ -36,7 +36,6 @@ describe('LegionMessageRouter', () => {
       workdirManager: workdirs,
       sessionManager: sessions,
       runnerFactory: factory,
-      allowedGuildId: 'guild-1',
       defaultAgent: 'kimi-code',
     });
   }
@@ -46,7 +45,7 @@ describe('LegionMessageRouter', () => {
     const sessions = new InMemorySessionManager();
     const router = makeRouter(workdirs, sessions);
 
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'guild-1', 'kimi-code');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'kimi-code');
 
     const route = await router.route(makeMsg({ content: 'write tests' }));
     expect(route.type).toBe('prompt');
@@ -60,7 +59,7 @@ describe('LegionMessageRouter', () => {
     const sessions = new InMemorySessionManager();
     const router = makeRouter(workdirs, sessions);
 
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'guild-1', 'kimi-code');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'kimi-code');
 
     const route = await router.route(makeMsg({ content: '/workdir /tmp/repo-b' }));
     expect(route.type).toBe('command');
@@ -90,7 +89,7 @@ describe('LegionMessageRouter', () => {
   it('creates thread session on thread create', async () => {
     const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'guild-1', 'kimi-code-text');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'kimi-code-text');
 
     const router = makeRouter(workdirs, sessions);
 
@@ -104,7 +103,7 @@ describe('LegionMessageRouter', () => {
   it('inherits agent from global default when workdir defaultAgent is unset', async () => {
     const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'guild-1');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a');
 
     const router = makeRouter(workdirs, sessions);
 
@@ -116,7 +115,7 @@ describe('LegionMessageRouter', () => {
   it('routes thread message to parent channel workdir', async () => {
     const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'guild-1', 'kimi-code');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'kimi-code');
 
     const router = makeRouter(workdirs, sessions);
 

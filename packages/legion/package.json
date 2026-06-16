@@ -7,12 +7,10 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/bootstrap.ts",
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-kimi-code": "*",
-    "legion-discord": "*"
+    "legion-api": "*"
   },
   "keywords": [
     "coding-agent",

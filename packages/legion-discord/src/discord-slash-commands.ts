@@ -1,5 +1,5 @@
 import { type ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import type { IMCommandDefinition } from 'legion';
+import type { IMCommandDefinition } from 'legion-api';
 
 export function buildSlashCommands(commands: IMCommandDefinition[]) {
   return commands.map((command) => {

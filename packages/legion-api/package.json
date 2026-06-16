@@ -1,0 +1,23 @@
+{
+  "name": "legion-api",
+  "version": "0.1.0",
+  "description": "Public API surface for Legion plugins",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "keywords": [
+    "coding-agent",
+    "im-bridge",
+    "plugin-api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

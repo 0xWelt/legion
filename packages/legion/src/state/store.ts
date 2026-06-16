@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { LegionState, Session, Workdir } from '../core/types.js';
+import type { LegionState, Session, Workdir, StateStore, JsonStateStoreOptions } from 'legion-api';
+
+export type { StateStore, JsonStateStoreOptions } from 'legion-api';
 
 type LegacyLegionState = Partial<
   LegionState & {
@@ -9,15 +11,6 @@ type LegacyLegionState = Partial<
     sessions?: Record<string, Session & { workspaceId?: string }>;
   }
 >;
-
-export interface StateStore {
-  load(): Promise<LegionState>;
-  save(state: LegionState): Promise<void>;
-}
-
-export interface JsonStateStoreOptions {
-  path: string;
-}
 
 export class JsonStateStore implements StateStore {
   private readonly path: string;
