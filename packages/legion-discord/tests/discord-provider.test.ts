@@ -14,7 +14,7 @@ vi.mock('discord.js', async () => {
   const actual = await vi.importActual<typeof Discord>('discord.js');
   return {
     ...actual,
-    Client: vi.fn().mockImplementation(() => {
+    Client: function () {
       const instance = {
         on: vi.fn(),
         login: vi.fn().mockResolvedValue(undefined),
@@ -24,7 +24,7 @@ vi.mock('discord.js', async () => {
       };
       mockInstances.push(instance);
       return instance;
-    }),
+    },
   };
 });
 
