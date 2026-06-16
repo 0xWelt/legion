@@ -30,7 +30,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=20.20.2"
+    "node": ">=24.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
