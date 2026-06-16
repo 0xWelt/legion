@@ -47,6 +47,21 @@ interface ClaudeUserEvent {
   };
 }
 
+interface ClaudeStreamEvent {
+  type: 'stream_event';
+  event: {
+    type: string;
+    message?: { id: string; role: string; content: []; model: string };
+    index?: number;
+    content_block?: ClaudeThinkingBlock | ClaudeTextBlock | ClaudeToolUseBlock;
+    delta?:
+      | { type: 'text_delta'; text: string }
+      | { type: 'thinking_delta'; thinking: string }
+      | { type: 'signature_delta'; signature: string }
+      | { type: 'input_json_delta'; partial_json: string };
+  };
+}
+
 interface ClaudeModelUsage {
   inputTokens?: number;
   outputTokens?: number;
@@ -74,7 +89,17 @@ interface ClaudeResultEvent {
   modelUsage: Record<string, ClaudeModelUsage>;
 }
 
-type ClaudeEvent = ClaudeSystemEvent | ClaudeAssistantEvent | ClaudeUserEvent | ClaudeResultEvent;
+type ClaudeEvent =
+  | ClaudeSystemEvent
+  | ClaudeAssistantEvent
+  | ClaudeUserEvent
+  | ClaudeResultEvent
+  | ClaudeStreamEvent;
+
+interface StreamState {
+  textBuffer: string;
+  thinkingBuffer: string;
+}
 
 export class ClaudeCodeRunner implements AgentRunner {
   readonly name = 'claude-code';
@@ -106,6 +131,8 @@ export class ClaudeCodeRunner implements AgentRunner {
       this.kill();
     }, timeoutMs);
 
+    const state: StreamState = { textBuffer: '', thinkingBuffer: '' };
+
     try {
       const lines = this.readLines(this.process.stdout!);
       const lineIterator = lines[Symbol.asyncIterator]();
@@ -115,7 +142,7 @@ export class ClaudeCodeRunner implements AgentRunner {
         if (done) {
           break;
         }
-        const events = this.parseLine(line);
+        const events = this.parseLine(line, state);
         for (const event of events) {
           yield event;
         }
@@ -148,6 +175,7 @@ export class ClaudeCodeRunner implements AgentRunner {
       '--output-format',
       'stream-json',
       '--verbose',
+      '--include-partial-messages',
       '--permission-mode',
       (this.config.permissionMode as string | undefined) ?? 'bypassPermissions',
     ];
@@ -174,7 +202,7 @@ export class ClaudeCodeRunner implements AgentRunner {
     }
   }
 
-  private parseLine(line: string): AgentEvent[] {
+  private parseLine(line: string, state: StreamState): AgentEvent[] {
     try {
       const data = JSON.parse(line) as ClaudeEvent;
 
@@ -186,8 +214,12 @@ export class ClaudeCodeRunner implements AgentRunner {
         return [];
       }
 
+      if (data.type === 'stream_event') {
+        return this.parseStreamEvent(data.event, state);
+      }
+
       if (data.type === 'assistant') {
-        return this.parseAssistantMessage(data.message.content);
+        return this.parseAssistantMessage(data.message.content, state);
       }
 
       if (data.type === 'user') {
@@ -204,15 +236,53 @@ export class ClaudeCodeRunner implements AgentRunner {
     }
   }
 
+  private parseStreamEvent(event: ClaudeStreamEvent['event'], state: StreamState): AgentEvent[] {
+    switch (event.type) {
+      case 'message_start': {
+        state.textBuffer = '';
+        state.thinkingBuffer = '';
+        return [];
+      }
+      case 'content_block_start': {
+        if (event.content_block?.type === 'text') {
+          state.textBuffer = '';
+        } else if (event.content_block?.type === 'thinking') {
+          state.thinkingBuffer = '';
+        }
+        return [];
+      }
+      case 'content_block_delta': {
+        const delta = event.delta;
+        if (!delta) return [];
+        if (delta.type === 'text_delta') {
+          state.textBuffer += delta.text;
+          return [{ type: 'text', text: state.textBuffer, delta: delta.text }];
+        }
+        if (delta.type === 'thinking_delta') {
+          state.thinkingBuffer += delta.thinking;
+          return [{ type: 'thinking', text: state.thinkingBuffer, delta: delta.thinking }];
+        }
+        return [];
+      }
+      default:
+        return [];
+    }
+  }
+
   private parseAssistantMessage(
-    content: Array<ClaudeThinkingBlock | ClaudeTextBlock | ClaudeToolUseBlock>
+    content: Array<ClaudeThinkingBlock | ClaudeTextBlock | ClaudeToolUseBlock>,
+    state: StreamState
   ): AgentEvent[] {
     const events: AgentEvent[] = [];
     for (const block of content) {
       if (block.type === 'thinking') {
-        events.push({ type: 'thinking', text: block.thinking });
+        if (!state.thinkingBuffer) {
+          events.push({ type: 'thinking', text: block.thinking });
+        }
       } else if (block.type === 'text') {
-        events.push({ type: 'text', text: block.text });
+        if (!state.textBuffer) {
+          events.push({ type: 'text', text: block.text });
+        }
       } else if (block.type === 'tool_use') {
         events.push({
           type: 'tool_call',

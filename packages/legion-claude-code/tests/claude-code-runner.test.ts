@@ -97,6 +97,7 @@ describe('ClaudeCodeRunner', () => {
         '--output-format',
         'stream-json',
         '--verbose',
+        '--include-partial-messages',
         '--permission-mode',
         'bypassPermissions',
       ],
@@ -115,7 +116,16 @@ describe('ClaudeCodeRunner', () => {
     }
     expect(spawn).toHaveBeenCalledWith(
       'claude',
-      ['-p', 'hello', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'plan'],
+      [
+        '-p',
+        'hello',
+        '--output-format',
+        'stream-json',
+        '--verbose',
+        '--include-partial-messages',
+        '--permission-mode',
+        'plan',
+      ],
       expect.anything()
     );
   });
@@ -137,6 +147,7 @@ describe('ClaudeCodeRunner', () => {
         '--output-format',
         'stream-json',
         '--verbose',
+        '--include-partial-messages',
         '--permission-mode',
         'bypassPermissions',
         '--resume',
@@ -431,6 +442,124 @@ describe('ClaudeCodeRunner', () => {
       expect(events).toEqual([
         { type: 'tool_result', toolId: 'tool-a', output: 'result-a' },
         { type: 'tool_result', toolId: 'tool-b', output: 'result-b' },
+        {
+          type: 'usage',
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          costUsd: 0,
+        },
+        { type: 'complete', exitCode: 0 },
+      ]);
+    });
+
+    it('emits token-level text deltas from stream_event', async () => {
+      mockSpawn([
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'message_start',
+            message: { id: 'msg-1', role: 'assistant', content: [], model: 'claude' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'text', text: '' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'text_delta', text: 'He' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'text_delta', text: 'llo' },
+          },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'Hello' }] },
+        }),
+        resultEvent('success'),
+      ]);
+      const runner = new ClaudeCodeRunner({ binary: 'claude' });
+      const events: unknown[] = [];
+      for await (const event of runner.run({ sessionId: 's1', workdir: '/tmp' }, 'hello')) {
+        events.push(event);
+      }
+      expect(events).toEqual([
+        { type: 'text', text: 'He', delta: 'He' },
+        { type: 'text', text: 'Hello', delta: 'llo' },
+        {
+          type: 'usage',
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          costUsd: 0,
+        },
+        { type: 'complete', exitCode: 0 },
+      ]);
+    });
+
+    it('emits thinking deltas from stream_event', async () => {
+      mockSpawn([
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'message_start',
+            message: { id: 'msg-1', role: 'assistant', content: [], model: 'claude' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'thinking', thinking: '', signature: '' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'thinking_delta', thinking: 'I ' },
+          },
+        }),
+        JSON.stringify({
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'thinking_delta', thinking: 'think' },
+          },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          message: { role: 'assistant', content: [{ type: 'thinking', thinking: 'I think' }] },
+        }),
+        resultEvent('success'),
+      ]);
+      const runner = new ClaudeCodeRunner({ binary: 'claude' });
+      const events: unknown[] = [];
+      for await (const event of runner.run({ sessionId: 's1', workdir: '/tmp' }, 'hello')) {
+        events.push(event);
+      }
+      expect(events).toEqual([
+        { type: 'thinking', text: 'I ', delta: 'I ' },
+        { type: 'thinking', text: 'I think', delta: 'think' },
         {
           type: 'usage',
           inputTokens: 0,

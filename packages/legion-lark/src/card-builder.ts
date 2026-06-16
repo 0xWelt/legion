@@ -6,7 +6,7 @@ const MAX_PANEL_LENGTH = 2000;
 
 export interface CardState {
   mainText: string;
-  thinking: string[];
+  thinking: string;
   toolCalls: string[];
   toolResults: string[];
   hasError: boolean;
@@ -16,7 +16,7 @@ export interface CardState {
 export function createInitialState(): CardState {
   return {
     mainText: '',
-    thinking: [],
+    thinking: '',
     toolCalls: [],
     toolResults: [],
     hasError: false,
@@ -31,9 +31,9 @@ export function applyEvent(state: CardState, event: AgentEvent): CardState {
       break;
     }
     case 'thinking': {
-      const line = event.text.trim();
-      if (line) {
-        state.thinking.push(line);
+      const delta = event.delta ?? event.text;
+      if (delta) {
+        state.thinking += delta;
       }
       break;
     }
@@ -88,7 +88,7 @@ export function buildCard(state: CardState): LarkCard {
   }
 
   if (state.thinking.length > 0) {
-    elements.push(buildCollapsiblePanel('💭 思考过程', state.thinking, MAX_PANEL_LENGTH));
+    elements.push(buildCollapsiblePanel('💭 思考过程', [state.thinking], MAX_PANEL_LENGTH));
   }
 
   if (state.toolCalls.length > 0) {

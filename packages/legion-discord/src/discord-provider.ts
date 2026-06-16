@@ -307,9 +307,9 @@ export class DiscordProvider implements IMProvider {
         break;
       }
       case 'thinking': {
-        const line = event.text.trim();
-        if (!line) break;
-        state.thinkingText = state.thinkingText ? `${state.thinkingText}\n${line}` : line;
+        const delta = event.delta ?? event.text;
+        if (!delta) break;
+        state.thinkingText = state.thinkingText ? `${state.thinkingText}${delta}` : delta;
         const content = `💭 ${state.thinkingText}`.slice(0, 2000);
         if (!state.thinkingMessageRef) {
           state.thinkingMessageRef = await this.sendText(target, content);

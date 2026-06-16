@@ -50,6 +50,7 @@ export interface ToolResultEvent {
 export interface ThinkingEvent {
   type: 'thinking';
   text: string;
+  delta?: string;
 }
 
 export interface SessionInitEvent {
