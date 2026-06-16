@@ -31,7 +31,7 @@ describe('buildSlashCommands', () => {
             name: 'name',
             description: 'runner name',
             required: false,
-            choices: ['kimi-code', 'kimi-code-text'],
+            choices: ['kimi-code', 'claude-code'],
           },
         ],
       },
@@ -41,7 +41,7 @@ describe('buildSlashCommands', () => {
     expect(options).toHaveLength(1);
     expect((options[0] as { choices?: Array<{ name: string; value: string }> }).choices).toEqual([
       { name: 'kimi-code', value: 'kimi-code' },
-      { name: 'kimi-code-text', value: 'kimi-code-text' },
+      { name: 'claude-code', value: 'claude-code' },
     ]);
   });
 });
@@ -71,10 +71,10 @@ describe('buildCommandContent', () => {
   it('builds /agent with name', () => {
     expect(
       buildCommandContent(
-        makeInteraction('agent', { name: 'kimi-code-text' }) as never,
+        makeInteraction('agent', { name: 'claude-code' }) as never,
         COMMAND_DEFINITIONS
       )
-    ).toBe('/agent kimi-code-text');
+    ).toBe('/agent claude-code');
   });
 
   it('builds /agent without name', () => {
@@ -86,10 +86,10 @@ describe('buildCommandContent', () => {
   it('builds /agent with name and scope', () => {
     expect(
       buildCommandContent(
-        makeInteraction('agent', { name: 'kimi-code-text', scope: 'global' }) as never,
+        makeInteraction('agent', { name: 'claude-code', scope: 'global' }) as never,
         COMMAND_DEFINITIONS
       )
-    ).toBe('/agent kimi-code-text --global');
+    ).toBe('/agent claude-code --global');
   });
 
   it('builds /help', () => {

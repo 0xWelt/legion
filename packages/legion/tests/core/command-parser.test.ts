@@ -27,9 +27,9 @@ describe('CommandParser', () => {
   });
 
   it('parses /agent with name', () => {
-    expect(parser.parse('/agent kimi-code-text')).toEqual({
+    expect(parser.parse('/agent claude-code')).toEqual({
       type: 'agent',
-      name: 'kimi-code-text',
+      name: 'claude-code',
       scope: 'session',
     });
   });
@@ -39,9 +39,9 @@ describe('CommandParser', () => {
   });
 
   it('parses /agent --global', () => {
-    expect(parser.parse('/agent --global kimi-code-text')).toEqual({
+    expect(parser.parse('/agent --global claude-code')).toEqual({
       type: 'agent',
-      name: 'kimi-code-text',
+      name: 'claude-code',
       scope: 'global',
     });
   });

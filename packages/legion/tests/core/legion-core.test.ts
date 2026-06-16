@@ -220,7 +220,6 @@ describe('LegionCore', () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     factory.register('kimi-code', () => new FakeRunner([{ type: 'text', text: 'done' }]));
-    factory.register('kimi-code-text', () => new FakeRunner([{ type: 'text', text: 'done' }]));
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
@@ -237,11 +236,11 @@ describe('LegionCore', () => {
   });
 
   it('selects runner based on defaultAgent config', async () => {
-    for (const runner of ['kimi-code', 'kimi-code-text'] as const) {
+    for (const runner of ['kimi-code', 'claude-code'] as const) {
       const provider = new FakeProvider();
       const factory = new DefaultAgentRunnerFactory();
       factory.register('kimi-code', () => new FakeRunner([{ type: 'text', text: 'json' }]));
-      factory.register('kimi-code-text', () => new FakeRunner([{ type: 'text', text: 'text' }]));
+      factory.register('claude-code', () => new FakeRunner([{ type: 'text', text: 'text' }]));
       const store = new JsonStateStore({ path: join(tempDir, `state-${runner}.json`) });
       const core = new LegionCore({
         config: makeConfig(runner),
@@ -309,7 +308,7 @@ describe('LegionCore', () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     factory.register('kimi-code', () => new FakeRunner([]));
-    factory.register('kimi-code-text', () => new FakeRunner([]));
+    factory.register('claude-code', () => new FakeRunner([]));
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
@@ -319,18 +318,16 @@ describe('LegionCore', () => {
     });
     await core.start();
     await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
-    await provider.emitMessage(makeMsg('/agent kimi-code-text'));
+    await provider.emitMessage(makeMsg('/agent claude-code'));
 
-    expect(provider.sent.some((s) => s.text === '已切换到 session agent: kimi-code-text')).toBe(
-      true
-    );
+    expect(provider.sent.some((s) => s.text === '已切换到 session agent: claude-code')).toBe(true);
   });
 
   it('sets workdir agent via /agent --workdir', async () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     factory.register('kimi-code', () => new FakeRunner([]));
-    factory.register('kimi-code-text', () => new FakeRunner([]));
+    factory.register('claude-code', () => new FakeRunner([]));
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: makeConfig(),
@@ -340,9 +337,9 @@ describe('LegionCore', () => {
     });
     await core.start();
     await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
-    await provider.emitMessage(makeMsg('/agent --workdir kimi-code-text'));
+    await provider.emitMessage(makeMsg('/agent --workdir claude-code'));
 
-    expect(provider.sent.some((s) => s.text === '已设置 workdir 默认 agent: kimi-code-text')).toBe(
+    expect(provider.sent.some((s) => s.text === '已设置 workdir 默认 agent: claude-code')).toBe(
       true
     );
   });
@@ -351,7 +348,7 @@ describe('LegionCore', () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     factory.register('kimi-code', () => new FakeRunner([]));
-    factory.register('kimi-code-text', () => new FakeRunner([]));
+    factory.register('claude-code', () => new FakeRunner([]));
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const configPath = join(tempDir, 'config.json');
     await writeFile(configPath, JSON.stringify(makeConfig()), 'utf8');
@@ -364,18 +361,18 @@ describe('LegionCore', () => {
     });
     await core.start();
     await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
-    await provider.emitMessage(makeMsg('/agent --global kimi-code-text'));
+    await provider.emitMessage(makeMsg('/agent --global claude-code'));
 
-    expect(provider.sent.some((s) => s.text === '已设置全局默认 agent: kimi-code-text')).toBe(true);
+    expect(provider.sent.some((s) => s.text === '已设置全局默认 agent: claude-code')).toBe(true);
     const saved = JSON.parse(await readFile(configPath, 'utf8')) as LegionConfig;
-    expect(saved.defaultAgent).toBe('kimi-code-text');
+    expect(saved.defaultAgent).toBe('claude-code');
   });
 
   it('allows omitted agents config and validates against registered runners', async () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     factory.register('kimi-code', () => new FakeRunner([{ type: 'text', text: 'ok' }]));
-    factory.register('kimi-code-text', () => new FakeRunner([{ type: 'text', text: 'ok' }]));
+    factory.register('claude-code', () => new FakeRunner([{ type: 'text', text: 'ok' }]));
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     const core = new LegionCore({
       config: {
@@ -392,6 +389,6 @@ describe('LegionCore', () => {
     await provider.emitMessage(makeMsg('/agent unknown-runner'));
 
     expect(provider.sent.some((s) => s.text.includes('未知 agent'))).toBe(true);
-    expect(provider.sent.some((s) => s.text.includes('kimi-code, kimi-code-text'))).toBe(true);
+    expect(provider.sent.some((s) => s.text.includes('kimi-code, claude-code'))).toBe(true);
   });
 });

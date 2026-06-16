@@ -336,6 +336,10 @@ npm run typecheck && npm run lint && npm run test && npm run format:check
 }
 ```
 
+## 14. 后续变更
+
+- 2026-06-16：`kimi-code-text` runner 已被移除。`--output-format text` 模式在工具识别、thinking 与 progress 区分等方面存在根本局限，当前由 `kimi-code`（`--output-format stream-json`）与 `claude-code` 覆盖，不再维护。
+
 ---
 
 创建日期：2026-06-14

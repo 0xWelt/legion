@@ -89,7 +89,7 @@ describe('LegionMessageRouter', () => {
   it('creates thread session on thread create', async () => {
     const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'kimi-code-text');
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a', 'claude-code');
 
     const router = makeRouter(workdirs, sessions);
 
@@ -97,7 +97,7 @@ describe('LegionMessageRouter', () => {
     const session = sessions.get('thread-1');
     expect(session).toBeDefined();
     expect(session?.type).toBe('thread');
-    expect(session?.agent).toBe('kimi-code-text');
+    expect(session?.agent).toBe('claude-code');
   });
 
   it('inherits agent from global default when workdir defaultAgent is unset', async () => {

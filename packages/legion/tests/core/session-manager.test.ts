@@ -15,19 +15,19 @@ describe('InMemorySessionManager', () => {
 
   it('creates thread session with agent', () => {
     const manager = new InMemorySessionManager();
-    const session = manager.createThread('456', 'fix-bug', 'wd-1', 'kimi-code-text');
+    const session = manager.createThread('456', 'fix-bug', 'wd-1', 'claude-code');
 
     expect(session.id).toBe('456');
     expect(session.type).toBe('thread');
-    expect(session.agent).toBe('kimi-code-text');
+    expect(session.agent).toBe('claude-code');
   });
 
   it('sets agent', () => {
     const manager = new InMemorySessionManager();
     manager.createMain('123', 'main', 'wd-1', 'kimi-code');
-    manager.setAgent('123', 'kimi-code-text');
+    manager.setAgent('123', 'claude-code');
 
-    expect(manager.get('123')?.agent).toBe('kimi-code-text');
+    expect(manager.get('123')?.agent).toBe('claude-code');
   });
 
   it('sets agent session id', () => {
@@ -42,7 +42,7 @@ describe('InMemorySessionManager', () => {
     const manager = new InMemorySessionManager();
     manager.createMain('1', 'main', 'wd-a', 'kimi-code');
     manager.createThread('2', 't1', 'wd-a', 'kimi-code');
-    manager.createThread('3', 't2', 'wd-b', 'kimi-code-text');
+    manager.createThread('3', 't2', 'wd-b', 'claude-code');
 
     expect(manager.listByWorkdir('wd-a')).toHaveLength(2);
     expect(manager.listByWorkdir('wd-b')).toHaveLength(1);

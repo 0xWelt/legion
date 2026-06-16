@@ -28,8 +28,8 @@ describe('InMemoryWorkdirManager', () => {
   it('sets workdir defaultAgent', () => {
     const manager = new InMemoryWorkdirManager();
     manager.bind('123', 'repo-a', '/home/user/repo-a');
-    manager.setDefaultAgent('123', 'kimi-code-text');
-    expect(manager.get('123')?.defaultAgent).toBe('kimi-code-text');
+    manager.setDefaultAgent('123', 'claude-code');
+    expect(manager.get('123')?.defaultAgent).toBe('claude-code');
   });
 
   it('loads initial state', () => {

@@ -759,6 +759,10 @@ Discord Forum Channel 每个 post 就是一个 Thread，未来可专门支持：
 - [QwenLM/qwen-code](https://github.com/QwenLM/qwen-code) — Qwen Code CLI 官方仓库。
 - [KoinaAI/MiMo-CLI](https://github.com/KoinaAI/MiMo-CLI) / [mimo.xiaomi.com/mimocode](https://mimo.xiaomi.com/mimocode) — MiMo Code CLI 官方仓库。
 
+## 16. 后续变更
+
+- 2026-06-16：`kimi-code-text` runner 已被移除。`--output-format text` 模式在工具识别、thinking 与 progress 区分等方面存在根本局限，当前由 `kimi-code`（`--output-format stream-json`）与 `claude-code` 覆盖，不再维护。
+
 ---
 
 创建日期：2026-06-14
