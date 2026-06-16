@@ -6,9 +6,11 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
     alias: {
+      'legion-api': resolve(__dirname, 'packages/legion-api/src/index.ts'),
       legion: resolve(__dirname, 'packages/legion/src/index.ts'),
       'legion-kimi-code': resolve(__dirname, 'packages/legion-kimi-code/src/index.ts'),
       'legion-discord': resolve(__dirname, 'packages/legion-discord/src/index.ts'),
+      'legion-lark': resolve(__dirname, 'packages/legion-lark/src/index.ts'),
     },
   },
   test: {
