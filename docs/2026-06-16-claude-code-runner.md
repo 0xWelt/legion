@@ -39,18 +39,21 @@ claude -p "say hi" --output-format stream-json --verbose
 
 ### 流式行为
 
-通过真实命令（含 `sleep` 的工具调用）观察到的流式特征：
+Claude Code CLI 在 `--output-format stream-json --verbose` 下默认按行输出完整 `assistant` / `user` / `result` 事件，不是字符级流式。要开启真 token 级流式，需要额外加上 `--include-partial-messages`。
 
-- **每一行都是一个完整 JSON 对象**，不是字符级流。例如 `assistant` 事件里的 `thinking` 或 `text` 在该行出现时已经是完整的一段内容。
-- **不同 block 按顺序分行输出**：一次简单的工具调用会观察到如下顺序：
-  1. `system/init`
-  2. `assistant` + `thinking`
-  3. `assistant` + `tool_use`
-  4. `user` + `tool_result`（在工具实际执行完后才出现）
-  5. `assistant` + `thinking`
-  6. `assistant` + `text`
-  7. `result`
-- 因此 Runner 只需要 **按行读取并立即 yield**，就能保证事件顺序与 Claude 的输出顺序一致。
+加上该参数后，stdout 会同时出现两类事件：
+
+1. **`stream_event` 包装的真流式事件**：
+   - `message_start` / `message_stop`
+   - `content_block_start` / `content_block_stop`
+   - `content_block_delta`：
+     - `text_delta` → `TextEvent`
+     - `thinking_delta` → `ThinkingEvent`
+     - `input_json_delta` → `ToolCallDeltaEvent`
+     - `signature_delta` → 忽略（thinking 签名，仅作验证）
+2. **完整消息快照**：`assistant` / `user` / `result` 事件仍然会输出，用于获取最终完整内容和用量。
+
+Runner 内部维护流式状态（text buffer、thinking buffer、tool_use JSON buffer），在 `content_block_stop` 时把累积的 JSON 解析成最终 `tool_call`。完整 `assistant` 事件中的 `tool_use` 如果已经通过 `stream_event` 输出过，则跳过，避免重复。
 
 `result` 事件的 `modelUsage` 字段是一个以模型名为 key 的对象，例如 `modelUsage["kimi-for-coding"]`。优先从这里读取 token 和费用；如果拿不到，再回退到顶层的 `usage` 和 `total_cost_usd`。
 
@@ -74,7 +77,7 @@ packages/legion-claude-code/
 
 ### 2. `ClaudeCodeRunner`
 
-- 命令：`claude -p <prompt> --output-format stream-json --verbose --permission-mode bypassPermissions`
+- 命令：`claude -p <prompt> --output-format stream-json --verbose --include-partial-messages --permission-mode bypassPermissions`
 - 默认权限模式：`bypassPermissions`，即完全无人值守、不弹出权限确认。可通过 `AgentConfig.permissionMode` 覆盖，例如 `"plan"` 或 `"default"`。
 - 会话续期：如果 `SessionContext.agentSessionId` 存在，追加 `--resume <session_id>`。
 - 超时：300 秒，与 Kimi runner 一致。
@@ -111,6 +114,9 @@ packages/legion-claude-code/
   - 单个 `assistant` 消息中包含 mixed content blocks
   - 单个 `user` 消息中包含多个 `tool_result`
   - thinking / tool_use / tool_result / text 交错顺序
+  - `stream_event` 的 `text_delta` 累积并生成 `TextEvent`
+  - `stream_event` 的 `thinking_delta` 累积并生成 `ThinkingEvent`
+  - `stream_event` 的 `input_json_delta` 累积并生成 `ToolCallDeltaEvent` 与最终 `ToolCallEvent`
 
 端到端验证：
 

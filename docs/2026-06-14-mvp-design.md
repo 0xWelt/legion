@@ -137,6 +137,7 @@ Legion 把它们全部翻译成统一的 `AgentEvent`：
 type AgentEvent =
   | TextEvent
   | ToolCallEvent
+  | ToolCallDeltaEvent
   | ToolResultEvent
   | ThinkingEvent
   | SessionInitEvent
@@ -154,7 +155,15 @@ interface ToolCallEvent {
   type: 'tool_call';
   toolId: string;
   toolName: string;
-  input: unknown;
+  input: unknown;  // 已解析的完整工具参数
+}
+
+interface ToolCallDeltaEvent {
+  type: 'tool_call_delta';
+  toolId: string;
+  toolName: string;
+  partialInput: string; // 当前累积的 JSON 字符串（尚未保证可解析）
+  delta: string;        // 本次增量 JSON 片段
 }
 
 interface ToolResultEvent {
@@ -165,7 +174,8 @@ interface ToolResultEvent {
 
 interface ThinkingEvent {
   type: 'thinking';
-  text: string;
+  text: string;    // 当前累积的完整 thinking
+  delta?: string;  // 可选增量，用于字符级流式
 }
 
 interface SessionInitEvent {
@@ -178,6 +188,7 @@ interface UsageEvent {
   inputTokens?: number;
   outputTokens?: number;
   cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   costUsd?: number;
 }
 
@@ -199,6 +210,8 @@ interface CompleteEvent {
 - `session_init` 必须被 Legion Core 捕获并持久化到 `Session.agentSessionId`。
 - `error.fatal === true` 时，IMProvider 需要在最终回复中明确报错。
 - `complete` 表示子进程结束，Core 用于清理，IMProvider 用于最终收尾。
+- `delta` 字段是可选的：支持真流式的 runner（如 `claude-code`）可以输出增量；不支持的 runner（如 `kimi-code`）可以只输出完整 `text`/`thinking`，IMProvider 应同时兼容两种形式。
+- `tool_call_delta` 是可选的中间态：支持工具参数 JSON 流式累积的 runner 可以输出，IMProvider 可选择渲染实时拼装过程，或仅等待最终的 `tool_call`。
 
 ## 4. 系统架构
 
