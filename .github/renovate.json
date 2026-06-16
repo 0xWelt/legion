@@ -1,34 +1,74 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
-    ":dependencyDashboard",
+    "config:best-practices",
     ":automergePatch",
     ":automergeMinor",
     ":disableAutomergeMajor",
-    ":semanticCommits"
+    ":semanticCommits",
+    ":prHourlyLimit2",
+    ":prConcurrentLimit10"
   ],
-  "schedule": ["before 9am on monday"],
   "timezone": "Asia/Shanghai",
+  "schedule": ["before 9am on monday"],
+  "rangeStrategy": "bump",
+  "rebaseWhen": "conflicted",
+  "platformAutomerge": true,
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
     "schedule": ["before 9am on monday"]
   },
-  "packageRules": [
-    {
-      "matchUpdateTypes": ["patch", "minor"],
-      "matchDepTypes": ["devDependencies"],
-      "automerge": true
-    },
-    {
-      "matchUpdateTypes": ["patch"],
-      "matchDepTypes": ["dependencies"],
-      "automerge": true
-    }
-  ],
   "vulnerabilityAlerts": {
     "enabled": true,
     "automerge": true
-  }
+  },
+  "packageRules": [
+    {
+      "description": "Ignore internal workspace packages",
+      "matchPackageNames": [
+        "legion",
+        "legion-api",
+        "legion-discord",
+        "legion-kimi-code",
+        "legion-lark"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Auto-merge patch/minor devDependencies",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge patch runtime dependencies",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Keep @types/node aligned with the Node 20 baseline",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "^20.0.0"
+    },
+    {
+      "description": "Group TypeScript-ESLint monorepo updates",
+      "groupName": "typescript-eslint",
+      "matchPackageNames": ["/^@typescript-eslint//", "/^typescript-eslint$/"]
+    },
+    {
+      "description": "Group Vitest ecosystem updates",
+      "groupName": "vitest",
+      "matchPackageNames": ["/^vitest/", "/^@vitest//"]
+    },
+    {
+      "description": "Group Discord.js ecosystem updates",
+      "groupName": "discord.js",
+      "matchPackageNames": ["/^discord.js$/", "/^@discordjs//"]
+    }
+  ]
 }
