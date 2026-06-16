@@ -11,7 +11,12 @@ import {
   type LegionConfig,
 } from 'legion';
 
-const CANDIDATE_MODULES = ['legion-discord', 'legion-lark', 'legion-kimi-code'];
+const CANDIDATE_MODULES = [
+  'legion-discord',
+  'legion-lark',
+  'legion-kimi-code',
+  'legion-claude-code',
+];
 
 function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {
   return COMMAND_DEFINITIONS.map((command) => {

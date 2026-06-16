@@ -1,4 +1,5 @@
 import { stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import type { AgentRunnerFactory } from '../agent/types.js';
 import type { LegionConfig } from '../config/schema.js';
 import { DEFAULT_CONFIG_PATH, saveConfig } from '../config/loader.js';
@@ -98,17 +99,18 @@ export class LegionCore {
     switch (command.type) {
       case 'workdir': {
         if (command.path) {
-          const validation = await this.validateWorkdir(command.path);
+          const expandedPath = expandHome(command.path);
+          const validation = await this.validateWorkdir(expandedPath);
           if (!validation.valid) {
             await this.deps.imProvider.sendText(target, validation.reason);
             break;
           }
-          this.workdirManager.bind(session.workdirId, session.workdirId, command.path);
+          this.workdirManager.bind(session.workdirId, session.workdirId, expandedPath);
           this.logger.info('Workdir bound', {
             workdirId: session.workdirId,
-            path: command.path,
+            path: expandedPath,
           });
-          await this.deps.imProvider.sendText(target, `已绑定 workdir: ${command.path}`);
+          await this.deps.imProvider.sendText(target, `已绑定 workdir: ${expandedPath}`);
         } else {
           const workdir = this.workdirManager.get(session.workdirId);
           const reply = workdir?.path ? `当前 workdir: ${workdir.path}` : '尚未绑定 workdir';
@@ -380,4 +382,14 @@ export class LegionCore {
     });
     this.logger.info('State persisted');
   }
+}
+
+function expandHome(path: string): string {
+  if (path === '~') {
+    return homedir();
+  }
+  if (path.startsWith('~/')) {
+    return `${homedir()}${path.slice(1)}`;
+  }
+  return path;
 }

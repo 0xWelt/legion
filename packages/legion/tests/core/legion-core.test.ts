@@ -1,5 +1,5 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DefaultAgentRunnerFactory } from '../../src/agent/factory.js';
@@ -173,6 +173,28 @@ describe('LegionCore', () => {
       expect.objectContaining({
         target: expect.objectContaining({ channelId: 'ch-1' }),
         text: `已绑定 workdir: ${tempDir}`,
+      })
+    );
+  });
+
+  it('expands ~ in /workdir path', async () => {
+    const provider = new FakeProvider();
+    const factory = new DefaultAgentRunnerFactory();
+    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
+    const core = new LegionCore({
+      config: makeConfig(),
+      imProvider: provider,
+      runnerFactory: factory,
+      stateStore: store,
+    });
+    await core.start();
+
+    await provider.emitMessage(makeMsg('/workdir ~'));
+
+    expect(provider.sent).toContainEqual(
+      expect.objectContaining({
+        target: expect.objectContaining({ channelId: 'ch-1' }),
+        text: `已绑定 workdir: ${homedir()}`,
       })
     );
   });

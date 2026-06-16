@@ -11,5 +11,7 @@ export const kimiCodeAgentContribution: AgentContribution = {
   register: registerKimiRunners,
 };
 
+export const agentContribution: AgentContribution = kimiCodeAgentContribution;
+
 export { KimiCodeRunner } from './kimi-code-runner.js';
 export { KimiCodeTextRunner } from './kimi-code-text-runner.js';

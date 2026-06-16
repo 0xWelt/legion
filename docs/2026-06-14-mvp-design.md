@@ -472,13 +472,15 @@ factory.register('mimo', (config) => new MiMoCodeRunner(config));
 | Coding Agent | 创建 Session | 恢复 Session | 关键输出格式 | `agentSessionId` 来源 |
 |---|---|---|---|---|
 | **Kimi Code** | `kimi -p "..." --output-format stream-json` | `kimi --session <id> -p "..." --output-format stream-json` | JSONL：`role=assistant/tool/meta` | `meta.session.resume_hint.session_id` |
-| **Claude Code** | `claude -p "..." --output-format stream-json` | `claude -p --resume <id> "..." --output-format stream-json` | JSONL：`type=system/assistant/user/result/progress` | `system.subtype=init.session_id` |
+| **Claude Code** | `claude -p "..." --output-format stream-json --verbose --permission-mode bypassPermissions` | `claude -p "..." --resume <id> --output-format stream-json --verbose --permission-mode bypassPermissions` | JSONL：`type=system/assistant/user/result` | `system.subtype=init.session_id` |
 | **Codex CLI** | `codex exec --json "..."` | `codex exec resume --json <id> "..."` | JSONL：`type=thread.started/turn.completed/item.completed/error` | `thread.started.thread_id` |
 | **OpenCode** | `opencode run --format json "..."` | `opencode run --session ses_xxx --format json "..."` | JSONL：`type=step_start/text/tool_use/step_finish/...` | `step_start.sessionID` |
 | **Qwen Code** | `qwen --prompt "..." --output-format stream-json` | `qwen --prompt "..." --resume <id> --output-format stream-json` | JSONL：`type=text/tool_call/tool_result/...` | `step_start` / `init` 中的 session id |
 | **MiMo Code** | `mimo run --format json "..."` | `mimo run --session <id> --format json "..."` | JSONL：`type=step_start/text/tool_use/step_finish/...` | `step_start.sessionID` |
 
 **关于 GLM / MiniMax**：智谱 GLM 与 MiniMax 目前都没有官方独立维护的 coding agent CLI，因此第一阶段不把它们作为独立 Runner 实现。未来如果官方推出原生 CLI，再按同样接口接入。
+
+**无人值守约定**：Legion 默认以各 runner 能达到的最高自动权限运行。Kimi Code 的 `-p` 模式本身即自动执行工具；Claude Code 则通过 `--permission-mode bypassPermissions` 实现完全无人值守。具体 Runner 实现不应把权限选择暴露给用户，除非未来明确需要交互式确认模式。
 
 ### 7.4 Kimi Code 调用示例
 
@@ -555,9 +557,10 @@ interface RenderState {
 
 Legion 的"流式"是**事件驱动编辑**：`IMProvider.renderEvent()` 每收到一个 `AgentEvent`，就更新对应 Channel/Thread 的平台消息。
 
-| Agent | 事件粒度 | 流式体验 |
+| Agent / Runner | 事件粒度 | 流式体验 |
 |---|---|---|
-| Kimi Code | 完整 assistant block | 块级更新 |
+| `kimi-code`（`--output-format stream-json`） | 完整 assistant block | 块级更新；thinking 不输出；assistant text 以单个 JSON 事件整段返回，无 token 级流式 |
+| `kimi-code-text`（`--output-format text`） | stdout 字符/块 | stdout 按字符/块流式；但无法识别具体工具名/参数，stderr 中非 bullet 的 progress 文本需靠启发式与 thinking 区分 |
 | Claude Code | 完整 block + 可选 partial | 默认块级；可字符级 |
 | Codex CLI | `item.completed` 完整块 | 块级更新 |
 | OpenCode | `text` 完整块 | 块级更新 |
@@ -715,7 +718,7 @@ Discord Forum Channel 每个 post 就是一个 Thread，未来可专门支持：
 **不实现**：
 
 - 多 agent 切换。
-- 字符级流式。
+- 默认字符级流式（`kimi-code` runner 为块级更新；`kimi-code-text` runner 作为可选模式提供 stdout 字符/块流式，但有工具识别和 thinking 区分方面的局限）。
 - Forum Channel 支持。
 - 白名单（可后续加）。
 - Web UI。
@@ -755,3 +758,8 @@ Discord Forum Channel 每个 post 就是一个 Thread，未来可专门支持：
 - [bevibing/remote-opencode](https://github.com/bevibing/remote-opencode) — OpenCode Discord 远程控制 bot。
 - [QwenLM/qwen-code](https://github.com/QwenLM/qwen-code) — Qwen Code CLI 官方仓库。
 - [KoinaAI/MiMo-CLI](https://github.com/KoinaAI/MiMo-CLI) / [mimo.xiaomi.com/mimocode](https://mimo.xiaomi.com/mimocode) — MiMo Code CLI 官方仓库。
+
+---
+
+创建日期：2026-06-14
+最后更新：2026-06-16

@@ -62,6 +62,7 @@ export interface UsageEvent {
   inputTokens?: number;
   outputTokens?: number;
   cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   costUsd?: number;
 }
 
