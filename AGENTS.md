@@ -38,3 +38,15 @@
 - 例如对接 Kimi Code CLI 的输出格式时，应 clone `https://github.com/MoonshotAI/kimi-code.git`（或确认当前使用的 fork/版本），找到 `apps/kimi-code/src/cli/run-prompt.ts` 等关键文件。
 - 阅读源码后，把关键结论（如 `PROMPT_BLOCK_BULLET = '• '`、`text` 模式下 tool call/result 为 no-op、`tool.progress` 直接写 stderr 等）记录到 `docs/` 下的开发记录中。
 - 如果源码结论与之前的启发式实现有冲突，优先按源码修正实现。
+
+## 4. 先调研、后实现
+
+在实现新功能或对接新外部依赖前，**必须先完成充分的信息搜集**，避免凭少量运行观察或主观臆测直接写代码。典型步骤包括：
+
+1. **阅读官方文档**：命令帮助、`--help`、README、开发者文档。
+2. **联网搜索**：查找官方/社区对输出协议、事件类型、版本差异的说明。
+3. **阅读源码**：按第 3 节要求 clone 源码并定位关键文件（事件定义、CLI 入口、序列化逻辑）。
+4. **运行验证**：在本地用最小用例跑真实命令，确认事件顺序、字段含义和边界行为。
+5. **记录结论**：把协议/事件矩阵、踩坑点、未支持的能力写到 `docs/` 下的日期前缀文档中，再开始编码。
+
+**反例警示**：在实现 `legion-codex` runner 时，曾因未先完整阅读 Codex CLI 源码和 SDK 事件定义，仅凭几次 `codex exec --json` 的运行观察就推断事件类型，导致初版遗漏了 `item.updated`、`turn.failed`、顶层 `error`、以及 `reasoning`/`file_change`/`mcp_tool_call`/`web_search`/`todo_list` 等多种 item 类型。后续虽通过补读源码修正，但产生了不必要的返工。以后接到类似任务，必须完成上述 1–5 步后再提交第一版实现。
