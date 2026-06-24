@@ -38,7 +38,7 @@
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.0.0",
     "globals": "^17.0.0",
-    "lefthook": "^1.11.0",
+    "lefthook": "^2.0.0",
     "prettier": "^3.5.0",
     "tsx": "^4.19.0",
     "typescript": "^6.0.0",
