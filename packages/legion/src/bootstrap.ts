@@ -16,6 +16,7 @@ const CANDIDATE_MODULES = [
   'legion-lark',
   'legion-kimi-code',
   'legion-claude-code',
+  'legion-codex',
 ];
 
 function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {

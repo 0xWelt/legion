@@ -129,4 +129,29 @@ describe('LegionMessageRouter', () => {
     expect(route.session.type).toBe('thread');
     expect(route.session.agent).toBe('kimi-code');
   });
+
+  it('keeps existing session agent when global default changes', async () => {
+    const workdirs = new InMemoryWorkdirManager();
+    const sessions = new InMemorySessionManager();
+    workdirs.bind('channel-1', 'repo-a', '/tmp/repo-a');
+
+    const routerOld = makeRouter(workdirs, sessions);
+    const first = await routerOld.route(makeMsg({ content: 'first' }));
+    expect(first.type).toBe('prompt');
+    expect(first.session.agent).toBe('kimi-code');
+
+    // Simulate a config change: a new router is created with a different default agent.
+    const factory = new DefaultAgentRunnerFactory();
+    const routerNew = new LegionMessageRouter({
+      workdirManager: workdirs,
+      sessionManager: sessions,
+      runnerFactory: factory,
+      defaultAgent: 'claude-code',
+    });
+
+    const second = await routerNew.route(makeMsg({ content: 'second' }));
+    expect(second.type).toBe('prompt');
+    expect(second.session.agent).toBe('kimi-code');
+    expect(second.session.id).toBe(first.session.id);
+  });
 });
