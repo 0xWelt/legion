@@ -96,7 +96,7 @@
 ### 6.1 日常开发
 
 - 任何对用户可见的改动（新功能、bug 修复、破坏性变更）在提交 PR 时都应该附带一个 `.changeset/*.md` 文件。
-- 使用 `pnpm changeset`（或 `pnpm exec changeset`）交互式创建 changeset。
+- 使用 `vp exec changeset` 交互式创建 changeset。
 - changeset 的语义只描述本次变更，不要手动修改 `package.json` 版本号。
 
 ### 6.2 发布流程

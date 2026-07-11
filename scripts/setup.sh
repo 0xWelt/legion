@@ -9,8 +9,8 @@
 # install the systemd service.
 #
 # Steps:
-# 1. Check prerequisites (node >= 20, pnpm)
-# 2. pnpm install (if node_modules missing)
+# 1. Check prerequisites (node >= 20, vp)
+# 2. vp install (if node_modules missing)
 # 3. vp run -r build
 # 4. Create ~/.legion/ directory
 # 5. Run interactive config wizard (if config.json missing)
@@ -51,16 +51,18 @@ if [ "$NODE_VERSION" -lt 20 ]; then
 fi
 echo -e "${GREEN}✓${NC} Node.js $(node -v)"
 
-if ! command -v pnpm &>/dev/null; then
-  echo -e "${RED}✗${NC} pnpm not found. Install pnpm first (https://pnpm.io/installation)."
+if ! command -v vp &>/dev/null; then
+  echo -e "${RED}✗${NC} vp not found. Install Vite+ first:"
+  echo "  curl -fsSL https://vite.plus | bash"
+  echo "  # Then restart your shell"
   exit 1
 fi
-echo -e "${GREEN}✓${NC} pnpm $(pnpm -v)"
+echo -e "${GREEN}✓${NC} vp $(vp --version | head -n1)"
 
-# ── Step 2: pnpm install ────────────────────────────────────────────────
+# ── Step 2: vp install ──────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Installing dependencies..."
 cd "$PROJECT_DIR"
-pnpm install
+vp install
 echo -e "${GREEN}✓${NC} Dependencies ready"
 
 # ── Step 3: Build ───────────────────────────────────────────────────────

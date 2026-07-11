@@ -69,7 +69,7 @@ Agent 层和 IM 层相互独立：接入新的 agent 或新的 IM 平台，都�
 ```bash
 git clone <仓库地址>
 cd legion
-pnpm install
+vp install
 ```
 
 ### 2. 启动 Legion

@@ -36,8 +36,8 @@ jobs:
         id: changesets
         uses: changesets/action@06245a4e0a36c463a9308ffd6a9de192a3d00b48 # v4
         with:
-          publish: pnpm publish-packages
-          version: pnpm version-packages
+          publish: vp run publish-packages
+          version: vp run version-packages
           commit: 'chore: release packages'
           title: 'chore: release packages'
         env:

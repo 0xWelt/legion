@@ -232,7 +232,7 @@ describe('setup.sh', () => {
     const content = execSync(`cat "${SETUP_SCRIPT}"`, { encoding: 'utf8' });
     expect(content).toContain('#!/usr/bin/env bash');
     expect(content).toContain('Prerequisites');
-    expect(content).toContain('pnpm install');
+    expect(content).toContain('vp install');
     expect(content).toContain('vp run -r build');
     expect(content).toContain('bootstrap.mjs');
   });
