@@ -9,9 +9,9 @@
 # install the systemd service.
 #
 # Steps:
-# 1. Check prerequisites (node >= 20, npm)
-# 2. npm install (if node_modules missing)
-# 3. npm run build
+# 1. Check prerequisites (node >= 20, pnpm)
+# 2. pnpm install (if node_modules missing)
+# 3. pnpm run build
 # 4. Create ~/.legion/ directory
 # 5. Run interactive config wizard (if config.json missing)
 # 6. Install systemd service (Linux only, optional)
@@ -51,21 +51,21 @@ if [ "$NODE_VERSION" -lt 20 ]; then
 fi
 echo -e "${GREEN}✓${NC} Node.js $(node -v)"
 
-if ! command -v npm &>/dev/null; then
-  echo -e "${RED}✗${NC} npm not found."
+if ! command -v pnpm &>/dev/null; then
+  echo -e "${RED}✗${NC} pnpm not found. Install pnpm first (https://pnpm.io/installation)."
   exit 1
 fi
-echo -e "${GREEN}✓${NC} npm $(npm -v)"
+echo -e "${GREEN}✓${NC} pnpm $(pnpm -v)"
 
-# ── Step 2: npm install ─────────────────────────────────────────────────
+# ── Step 2: pnpm install ────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Installing dependencies..."
 cd "$PROJECT_DIR"
-npm install
+pnpm install
 echo -e "${GREEN}✓${NC} Dependencies ready"
 
 # ── Step 3: Build ───────────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Building..."
-npm run build
+pnpm run build
 echo -e "${GREEN}✓${NC} Build complete"
 
 # ── Step 4: Create legion home dir ──────────────────────────────────────
@@ -77,7 +77,7 @@ if [ -f "$LEGION_HOME/config.json" ]; then
   echo -e "${GREEN}✓${NC} Config already exists: $LEGION_HOME/config.json"
 else
   echo -e "${CYAN}→${NC} Running config wizard..."
-  node packages/legion/dist/bootstrap.js setup
+  node packages/legion/dist/bootstrap.mjs setup
   echo -e "${GREEN}✓${NC} Config saved"
 fi
 
@@ -115,5 +115,5 @@ echo "  legion gateway status                       # Check service status"
 echo "  journalctl --user -u legion-gateway -f       # View logs"
 echo ""
 echo "For development (TypeScript, no build):"
-echo "  npm run dev"
+echo "  pnpm dev"
 echo ""

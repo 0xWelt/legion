@@ -66,13 +66,13 @@ resolve_service_path() {
 
 # ── Generate systemd unit ────────────────────────────────────────────────
 generate_unit() {
-  local node_bin bootstrap_js svc_path
+  local node_bin bootstrap_mjs svc_path
   node_bin="$(find_node)"
-  bootstrap_js="$PROJECT_DIR/packages/legion/dist/bootstrap.js"
+  bootstrap_mjs="$PROJECT_DIR/packages/legion/dist/bootstrap.mjs"
 
-  if [ ! -f "$bootstrap_js" ]; then
-    echo "错误: bootstrap.js 不存在，请先执行 npm run build" >&2
-    echo "  cd $PROJECT_DIR && npm run build" >&2
+  if [ ! -f "$bootstrap_mjs" ]; then
+    echo "错误: bootstrap.mjs 不存在，请先执行 pnpm run build" >&2
+    echo "  cd $PROJECT_DIR && pnpm run build" >&2
     exit 1
   fi
 
@@ -89,7 +89,7 @@ StartLimitIntervalSec=60
 
 [Service]
 Type=simple
-ExecStart=${node_bin} ${bootstrap_js} run
+ExecStart=${node_bin} ${bootstrap_mjs} run
 WorkingDirectory=%h/.legion
 Environment="NODE_ENV=production"
 Environment="PATH=${svc_path}"
@@ -175,16 +175,16 @@ do_status() {
 }
 
 do_run() {
-  local bootstrap_js="$PROJECT_DIR/packages/legion/dist/bootstrap.js"
-  if [ ! -f "$bootstrap_js" ]; then
-    echo "错误: bootstrap.js 不存在，请先执行 npm run build" >&2
-    echo "  cd $PROJECT_DIR && npm run build" >&2
+  local bootstrap_mjs="$PROJECT_DIR/packages/legion/dist/bootstrap.mjs"
+  if [ ! -f "$bootstrap_mjs" ]; then
+    echo "错误: bootstrap.mjs 不存在，请先执行 pnpm run build" >&2
+    echo "  cd $PROJECT_DIR && pnpm run build" >&2
     exit 1
   fi
   echo "启动 Legion Gateway (前台模式)..."
   echo "按 Ctrl+C 停止"
   echo ""
-  exec "$(find_node)" "$bootstrap_js" run
+  exec "$(find_node)" "$bootstrap_mjs" run
 }
 
 case "$cmd" in

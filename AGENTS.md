@@ -52,7 +52,6 @@
 
 具体操作：
 
-
 - 已知项目在 GitHub 上→使用 `gh api` 浏览目录树，定位关键文件后读取完整内容
 - 未知 owner →使用 `gh search repos` 搜索
 - 本地已安装→阅读安装目录下的源码，同时通过 `git remote -v` 找到上游 repo

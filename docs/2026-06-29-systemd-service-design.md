@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 Legion 只有开发/调试模式（`npm run dev` → `tsx` 直接执行源码），没有正式的生产运行方式。需要设计：
+当前 Legion 只有开发/调试模式（`pnpm dev` → `tsx` 直接执行源码），没有正式的生产运行方式。需要设计：
 
 1. **正式安装方式**：用户如何获得和安装 Legion
 2. **CLI 工具**：统一的命令行入口，覆盖配置、运行、服务管理
@@ -59,7 +59,7 @@
 ```bash
 git clone https://github.com/0xWelt/legion.git ~/legion
 cd ~/legion
-./scripts/setup.sh          # 一键安装：npm install + build + 配置向导 + systemd 安装
+./scripts/setup.sh          # 一键安装：pnpm install + build + 配置向导 + systemd 安装
 ```
 
 安装完成后：
@@ -78,14 +78,17 @@ journalctl --user -u legion-gateway -f
 legion gateway status
 ```
 
-### 方式二：npm 全局安装（未来）
+### 方式二：npm registry 安装（部分支持）
+
+`packages/legion/package.json` 已配置 `bin` 与 `files`，因此发布后可通过 registry 安装：
 
 ```bash
-npm install -g legion
+npm install -g legion       # 或 npx legion
 legion setup                # 配置向导
-legion gateway install      # 安装 systemd 服务
-legion gateway start        # 启动
+legion gateway run          # 前台运行
 ```
+
+> 注意：当前 systemd 服务管理脚本（`scripts/legion-gateway`、`scripts/setup.sh`）仍依赖源码目录结构，registry 安装后暂不支持 `legion gateway install/start` 等后台服务管理。后续 Phase 3 将服务管理逻辑迁移到 TypeScript 后再统一支持。
 
 ### 方式三：curl 一键安装（未来，参考 OpenClaw）
 
@@ -134,16 +137,16 @@ legion
 
 ### 当前阶段实现优先级
 
-| 优先级 | 命令 | 说明 |
-| ------ | ---- | ---- |
-| P0 | `legion gateway run` | 前台运行（等同于当前 `npm run dev`） |
-| P0 | `legion gateway install/start/stop/status` | systemd 服务管理 |
-| P0 | `legion setup` | 首次配置向导 |
-| P1 | `legion config show` | 查看配置 |
-| P1 | `legion agent list` | 列出 agent |
-| P2 | `legion config set` | 修改配置 |
-| P2 | `legion gateway install --force` | 强制重装 |
-| P2 | `legion gateway restart` | 重启（当前 systemctl restart 即可） |
+| 优先级 | 命令                                       | 说明                                 |
+| ------ | ------------------------------------------ | ------------------------------------ |
+| P0     | `legion gateway run`                       | 前台运行（等同于当前 `npm run dev`） |
+| P0     | `legion gateway install/start/stop/status` | systemd 服务管理                     |
+| P0     | `legion setup`                             | 首次配置向导                         |
+| P1     | `legion config show`                       | 查看配置                             |
+| P1     | `legion agent list`                        | 列出 agent                           |
+| P2     | `legion config set`                        | 修改配置                             |
+| P2     | `legion gateway install --force`           | 强制重装                             |
+| P2     | `legion gateway restart`                   | 重启（当前 systemctl restart 即可）  |
 
 ---
 
@@ -164,9 +167,9 @@ set -euo pipefail
 #   ./scripts/setup.sh
 #
 # Steps:
-# 1. Check prerequisites (node >= 20, npm)
-# 2. npm install (if node_modules missing)
-# 3. npm run build
+# 1. Check prerequisites (node >= 20, pnpm)
+# 2. pnpm install (if node_modules missing)
+# 3. pnpm run build
 # 4. Create ~/.legion/ directory
 # 5. Run interactive config wizard (if config.json missing)
 # 6. Install systemd service (Linux only, optional)
@@ -204,18 +207,18 @@ if [ "$NODE_VERSION" -lt 20 ]; then
 fi
 echo -e "${GREEN}✓${NC} Node.js $(node -v)"
 
-# ── Step 2: npm install ─────────────────────────────────────────────────
+# ── Step 2: pnpm install ─────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Installing dependencies..."
 if [ ! -d "$PROJECT_DIR/node_modules" ]; then
     cd "$PROJECT_DIR"
-    npm install
+    pnpm install
 fi
 echo -e "${GREEN}✓${NC} Dependencies ready"
 
 # ── Step 3: Build ───────────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Building..."
 cd "$PROJECT_DIR"
-npm run build
+pnpm run build
 echo -e "${GREEN}✓${NC} Build complete"
 
 # ── Step 4: Create legion home directory ────────────────────────────────
@@ -226,7 +229,7 @@ echo -e "${GREEN}✓${NC} Created $LEGION_HOME"
 if [ ! -f "$LEGION_HOME/config.json" ]; then
     echo -e "${CYAN}→${NC} Running config wizard..."
     cd "$PROJECT_DIR"
-    node packages/legion/dist/bootstrap.js setup
+    node packages/legion/dist/bootstrap.mjs setup
 else
     echo -e "${GREEN}✓${NC} Config already exists: $LEGION_HOME/config.json"
 fi
@@ -265,13 +268,13 @@ echo ""
 
 ### 与 Hermes/OpenClaw 的对比
 
-| 特性 | Hermes | OpenClaw | Legion |
-| ---- | ------ | -------- | ------ |
-| 安装脚本 | `setup-hermes.sh` | `curl \| bash` | `scripts/setup.sh` |
-| 包管理器 | uv (Python) | pnpm / bun | npm |
-| UI 工具 | 无 | `gum` | 无（使用 read） |
-| 幂等性 | ✓ | ✓ | ✓ |
-| CLI symlink | `~/.local/bin/hermes` | 下载的 binary | `~/.local/bin/legion` |
+| 特性        | Hermes                | OpenClaw       | Legion                |
+| ----------- | --------------------- | -------------- | --------------------- |
+| 安装脚本    | `setup-hermes.sh`     | `curl \| bash` | `scripts/setup.sh`    |
+| 包管理器    | uv (Python)           | pnpm / bun     | pnpm                  |
+| UI 工具     | 无                    | `gum`          | 无（使用 read）       |
+| 幂等性      | ✓                     | ✓              | ✓                     |
+| CLI symlink | `~/.local/bin/hermes` | 下载的 binary  | `~/.local/bin/legion` |
 
 ---
 
@@ -288,7 +291,7 @@ echo ""
 #
 # Thin dispatcher — routes to:
 #   - scripts/legion-gateway  (gateway subcommands)
-#   - packages/legion/dist/bootstrap.js  (run, setup, config, agent, state)
+#   - packages/legion/dist/bootstrap.mjs  (run, setup, config, agent, state)
 
 set -euo pipefail
 
@@ -333,7 +336,7 @@ case "$cmd" in
     exec "$SCRIPT_DIR/legion-gateway" "${@:1}"
     ;;
   setup|config|agent|state)
-    exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.js" "$@"
+    exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" "$@"
     ;;
   *)
     echo "Unknown command: $cmd"
@@ -363,21 +366,21 @@ legion agent list          → node bootstrap.js agent list
 
 ### User Service vs System Service
 
-| 维度 | System Service (`/etc/systemd/system/`) | User Service (`~/.config/systemd/user/`) |
-| ---- | --------------------------------------- | ----------------------------------------- |
-| 权限 | root | 当前用户 |
-| 开机启动 | 系统启动时 | 用户登录时 (配合 linger 实现开机启动) |
-| 安装 | 需要 sudo | 无需 sudo |
-| 适用场景 | 服务器 | 个人开发机 / 工作站 |
+| 维度     | System Service (`/etc/systemd/system/`) | User Service (`~/.config/systemd/user/`) |
+| -------- | --------------------------------------- | ---------------------------------------- |
+| 权限     | root                                    | 当前用户                                 |
+| 开机启动 | 系统启动时                              | 用户登录时 (配合 linger 实现开机启动)    |
+| 安装     | 需要 sudo                               | 无需 sudo                                |
+| 适用场景 | 服务器                                  | 个人开发机 / 工作站                      |
 
 **选型：User Service** — Hermes 和 OpenClaw 都使用 user service。配合 `loginctl enable-linger` 可在未登录时保持运行。
 
 ### 服务管理入口
 
-| 方式 | 优点 | 缺点 |
-| ---- | ---- | ---- |
+| 方式                        | 优点                             | 缺点             |
+| --------------------------- | -------------------------------- | ---------------- |
 | TypeScript（OpenClaw 方式） | 跨平台，类型安全，可复用项目模块 | 需要 node 运行时 |
-| Shell 脚本（当前选型） | 零额外依赖，系统原生 | 平台相关 |
+| Shell 脚本（当前选型）      | 零额外依赖，系统原生             | 平台相关         |
 
 **选型：Shell 脚本** — 当前阶段服务管理逻辑简单（systemctl 薄封装），shell 最直接。未来可演进为 OpenClaw 风格的 TypeScript 实现以获得更好的跨平台支持。
 
@@ -464,22 +467,22 @@ WantedBy=default.target
 
 ### 与 Hermes、OpenClaw 的 systemd 参数对比
 
-| systemd 参数 | Hermes | OpenClaw | Legion（本设计） | 说明 |
-| ------------ | ------ | -------- | ----------------- | ---- |
-| `Restart` | `always` | `always` | `always` | 总是重启（含正常退出） |
-| `RestartSec` | `5` | `5` | `5` | 5 秒后重试 |
-| `RestartForceExitStatus` | `75` | — | — | 75 强制重启（Hermes 特有） |
-| `RestartPreventExitStatus` | — | `78` | `78` | 78 不重启 |
-| `TimeoutStopSec` | `210` | `30` | `30` | 停止超时（OpenClaw 用 30s） |
-| `TimeoutStartSec` | — | `30` | `30` | 启动超时 |
-| `SuccessExitStatus` | — | `0 143` | `0 143` | SIGTERM(143) 视为正常退出 |
-| `OOMPolicy` | — | `continue` | `continue` | OOM 不杀 service |
-| `KillMode` | `mixed` | `control-group` | `control-group` | 更强：所有 cgroup 进程一起杀 |
-| `ExecReload` | `/bin/kill -USR1` | — | 预留 | 热重载 |
-| `MemoryMax` | 无 | 无 | `1G` | 资源限制 |
-| `NoNewPrivileges` | 无 | 无 | `yes` | 安全加固 |
-| `ProtectSystem` | 无 | 无 | `strict` | 安全加固 |
-| `ProtectHome` | 无 | 无 | `read-only` | 安全加固 |
+| systemd 参数               | Hermes            | OpenClaw        | Legion（本设计） | 说明                         |
+| -------------------------- | ----------------- | --------------- | ---------------- | ---------------------------- |
+| `Restart`                  | `always`          | `always`        | `always`         | 总是重启（含正常退出）       |
+| `RestartSec`               | `5`               | `5`             | `5`              | 5 秒后重试                   |
+| `RestartForceExitStatus`   | `75`              | —               | —                | 75 强制重启（Hermes 特有）   |
+| `RestartPreventExitStatus` | —                 | `78`            | `78`             | 78 不重启                    |
+| `TimeoutStopSec`           | `210`             | `30`            | `30`             | 停止超时（OpenClaw 用 30s）  |
+| `TimeoutStartSec`          | —                 | `30`            | `30`             | 启动超时                     |
+| `SuccessExitStatus`        | —                 | `0 143`         | `0 143`          | SIGTERM(143) 视为正常退出    |
+| `OOMPolicy`                | —                 | `continue`      | `continue`       | OOM 不杀 service             |
+| `KillMode`                 | `mixed`           | `control-group` | `control-group`  | 更强：所有 cgroup 进程一起杀 |
+| `ExecReload`               | `/bin/kill -USR1` | —               | 预留             | 热重载                       |
+| `MemoryMax`                | 无                | 无              | `1G`             | 资源限制                     |
+| `NoNewPrivileges`          | 无                | 无              | `yes`            | 安全加固                     |
+| `ProtectSystem`            | 无                | 无              | `strict`         | 安全加固                     |
+| `ProtectHome`              | 无                | 无              | `read-only`      | 安全加固                     |
 
 ### 服务管理脚本
 
@@ -708,26 +711,26 @@ main().catch((err) => {
 
 ## 七、三项目实现对比
 
-| 维度 | Hermes | OpenClaw | Legion（本设计） |
-| ---- | ------ | -------- | ----------------- |
-| 运行环境 | Python (uv/venv) | Node.js (pnpm) | Node.js (npm) |
-| 安装脚本 | `setup-hermes.sh` | `scripts/install.sh`（curl） | `scripts/setup.sh` |
-| CLI 入口 | `hermes_cli/main.py`（argparse） | Commander.js（TypeScript） | `scripts/legion`（bash dispatcher） |
-| 服务管理实现 | Python (`scripts/hermes-gateway`) | TypeScript (`src/daemon/`) | Bash (`scripts/legion-gateway`) |
-| systemd unit 生成 | 脚本内字符串拼接 | 程序化 `buildSystemdUnit()` | heredoc 模板（当前） |
-| 跨平台 | systemd + launchd | systemd + launchd + schtasks | systemd（Phase 3+ launchd） |
-| `Restart` | `always` | `always` | `always` |
-| `KillMode` | `mixed` | `control-group` | `control-group` |
-| `RestartSec` | `5s` | `5s` | `5s` |
-| `TimeoutStopSec` | `210s` | `30s` | `30s` |
-| `OOMPolicy` | — | `continue` | `continue` |
-| `SuccessExitStatus` | — | `0 143` | `0 143` |
-| 安全加固 | 无 | 无 | `NoNewPrivileges` / `ProtectSystem` / `MemoryMax` |
-| 符号链接 | `~/.local/bin/hermes` | 下载的 binary | `~/.local/bin/legion` → scripts/legion |
-| Token 管理 | — | ✓（嵌入 service unit） | 预留 |
-| Version drift 检测 | — | ✓ | 预留 |
-| `--json` 输出 | — | ✓ | 预留 |
-| Multi-profile 支持 | — | ✓ | 预留 |
+| 维度                | Hermes                            | OpenClaw                     | Legion（本设计）                                  |
+| ------------------- | --------------------------------- | ---------------------------- | ------------------------------------------------- |
+| 运行环境            | Python (uv/venv)                  | Node.js (pnpm)               | Node.js (pnpm)                                    |
+| 安装脚本            | `setup-hermes.sh`                 | `scripts/install.sh`（curl） | `scripts/setup.sh`                                |
+| CLI 入口            | `hermes_cli/main.py`（argparse）  | Commander.js（TypeScript）   | `scripts/legion`（bash dispatcher）               |
+| 服务管理实现        | Python (`scripts/hermes-gateway`) | TypeScript (`src/daemon/`)   | Bash (`scripts/legion-gateway`)                   |
+| systemd unit 生成   | 脚本内字符串拼接                  | 程序化 `buildSystemdUnit()`  | heredoc 模板（当前）                              |
+| 跨平台              | systemd + launchd                 | systemd + launchd + schtasks | systemd（Phase 3+ launchd）                       |
+| `Restart`           | `always`                          | `always`                     | `always`                                          |
+| `KillMode`          | `mixed`                           | `control-group`              | `control-group`                                   |
+| `RestartSec`        | `5s`                              | `5s`                         | `5s`                                              |
+| `TimeoutStopSec`    | `210s`                            | `30s`                        | `30s`                                             |
+| `OOMPolicy`         | —                                 | `continue`                   | `continue`                                        |
+| `SuccessExitStatus` | —                                 | `0 143`                      | `0 143`                                           |
+| 安全加固            | 无                                | 无                           | `NoNewPrivileges` / `ProtectSystem` / `MemoryMax` |
+| 符号链接            | `~/.local/bin/hermes`             | 下载的 binary                | `~/.local/bin/legion` → scripts/legion            |
+| Token 管理          | —                                 | ✓（嵌入 service unit）       | 预留                                              |
+| Version drift 检测  | —                                 | ✓                            | 预留                                              |
+| `--json` 输出       | —                                 | ✓                            | 预留                                              |
+| Multi-profile 支持  | —                                 | ✓                            | 预留                                              |
 
 ---
 
@@ -753,7 +756,7 @@ process.on('SIGTERM', async () => {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log('Received SIGTERM, shutting down gracefully...');
-  await core.stop();  // 停止接受新消息，等待现有 agent 任务完成
+  await core.stop(); // 停止接受新消息，等待现有 agent 任务完成
   process.exit(0);
 });
 ```
@@ -775,11 +778,11 @@ process.on('SIGTERM', async () => {
 - CLI 输出 `--json` 选项（脚本友好）
 - Version drift 检测
 
-### Phase 4：npm 包 + Docker（后续）
+### Phase 4：npm registry 包 + Docker（后续）
 
-- `npm install -g legion` 全局安装
-- Docker 镜像
-- curl 一键安装 (`install.sh`)
+- `npm install -g legion` / `npx legion`：已具备基础条件（`bin` + `files`），但完整的 registry 安装体验（含 systemd 服务管理）需等待 Phase 3 的服务管理 TypeScript 化。
+- Docker 镜像。
+- curl 一键安装 (`install.sh`)。
 
 ---
 
@@ -794,3 +797,8 @@ process.on('SIGTERM', async () => {
 4. **node 路径探测**：`find_node()` 自动检测 nvm 管理的 node，避免硬编码版本号。OpenClaw 也有类似的路径解析逻辑。
 
 5. **Restart=always 的风险**：与 OpenClaw 一致使用 `Restart=always`。正常退出 (exit 0) 会被视为异常并重启。如果需要正常退出不重启，应使用 `exit 78`（`RestartPreventExitStatus=78`）或 `systemctl --user stop`。
+
+---
+
+创建日期：2026-06-29
+最后更新：2026-07-11

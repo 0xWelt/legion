@@ -8,6 +8,14 @@
   ],
   "license": "MIT",
   "author": "",
+  "bin": {
+    "legion": "./dist/bootstrap.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",

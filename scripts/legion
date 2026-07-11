@@ -9,7 +9,7 @@
 #   - setup/config/agent   → node dist/bootstrap.js
 #
 # For development (no build needed), use:
-#   npm run dev             → tsx src/bootstrap.ts (runs gateway)
+#   pnpm dev             → tsx src/bootstrap.ts (runs gateway)
 
 set -euo pipefail
 
@@ -46,7 +46,7 @@ Examples:
   legion setup            First-time configuration wizard
 
 For development with hot-reload (no build needed):
-  npm run dev
+  pnpm dev
 EOF
   exit 0
 }
@@ -65,7 +65,7 @@ case "$cmd" in
     exec "$SCRIPT_DIR/legion-gateway" "$@"
     ;;
   setup|config|agent|state)
-    exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.js" "$@"
+    exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" "$@"
     ;;
   *)
     echo "Unknown command: $cmd"

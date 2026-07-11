@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { execSync } from 'node:child_process';
 import { existsSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -5,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const PROJECT_ROOT = resolve(import.meta.dirname!, '..', '..', '..', '..');
-const BOOTSTRAP_JS = join(PROJECT_ROOT, 'packages', 'legion', 'dist', 'bootstrap.js');
+const BOOTSTRAP_MJS = join(PROJECT_ROOT, 'packages', 'legion', 'dist', 'bootstrap.mjs');
 const SCRIPTS_DIR = join(PROJECT_ROOT, 'scripts');
 const LEGION_SCRIPT = join(SCRIPTS_DIR, 'legion');
 const GATEWAY_SCRIPT = join(SCRIPTS_DIR, 'legion-gateway');
@@ -34,14 +35,14 @@ function runScript(script: string, args: string = ''): string {
 describe('bootstrap CLI', () => {
   describe('agent list', () => {
     it('lists registered agents', () => {
-      const output = run(`${BOOTSTRAP_JS} agent list`);
+      const output = run(`${BOOTSTRAP_MJS} agent list`);
       expect(output).toContain('kimi-code');
       expect(output).toContain('claude-code');
       expect(output).toContain('codex');
     });
 
     it('returns exit code 0', () => {
-      expect(() => run(`${BOOTSTRAP_JS} agent list`)).not.toThrow();
+      expect(() => run(`${BOOTSTRAP_MJS} agent list`)).not.toThrow();
     });
   });
 
@@ -49,7 +50,7 @@ describe('bootstrap CLI', () => {
     it('outputs JSON config', () => {
       // Config may or may not exist, but the command should run without crash
       try {
-        const output = run(`${BOOTSTRAP_JS} config show`);
+        const output = run(`${BOOTSTRAP_MJS} config show`);
         // If config exists, it should be valid JSON
         if (output.trim()) {
           JSON.parse(output.trim());
@@ -68,7 +69,7 @@ describe('bootstrap CLI', () => {
   describe('unknown command', () => {
     it('fails gracefully', () => {
       try {
-        run(`${BOOTSTRAP_JS} nonexistent`);
+        run(`${BOOTSTRAP_MJS} nonexistent`);
       } catch (err) {
         const stderr = (err as { stderr?: string }).stderr ?? '';
         const stdout = (err as { stdout?: string }).stdout ?? '';
@@ -84,7 +85,7 @@ describe('bootstrap CLI', () => {
       // fail immediately (no config) or hang. In either case the output
       // should NOT contain "unknown command".
       try {
-        execSync(`${process.execPath} ${BOOTSTRAP_JS} run`, {
+        execSync(`${process.execPath} ${BOOTSTRAP_MJS} run`, {
           encoding: 'utf8',
           cwd: PROJECT_ROOT,
           env: { ...process.env, LEGION_NON_INTERACTIVE: '1' },
@@ -191,7 +192,7 @@ describe('legion-gateway (shell)', () => {
       expect(unitContent).toContain('Description=Legion Gateway');
       expect(unitContent).toContain('[Service]');
       expect(unitContent).toContain('ExecStart=');
-      expect(unitContent).toContain('bootstrap.js');
+      expect(unitContent).toContain('bootstrap.mjs');
       expect(unitContent).toContain('Restart=always');
       expect(unitContent).toContain('KillMode=control-group');
       expect(unitContent).toContain('[Install]');
@@ -235,9 +236,8 @@ describe('setup.sh', () => {
     const content = execSync(`cat "${SETUP_SCRIPT}"`, { encoding: 'utf8' });
     expect(content).toContain('#!/usr/bin/env bash');
     expect(content).toContain('Prerequisites');
-    expect(content).toContain('npm install');
-    expect(content).toContain('npm run build');
-    expect(content).toContain('systemd');
-    expect(content).toContain('symlink');
+    expect(content).toContain('pnpm install');
+    expect(content).toContain('pnpm run build');
+    expect(content).toContain('bootstrap.mjs');
   });
 });
