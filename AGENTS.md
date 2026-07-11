@@ -31,13 +31,34 @@
 - 每次对文档进行实质性修改后，更新 `最后更新` 日期。
 - 日期使用 `YYYY-MM-DD` 格式（例如 `2026-06-14`）。
 
-## 3. 外部依赖源码阅读规范
+## 3. 源码阅读规范
+
+### 3a. 外部依赖源码
 
 当 Legion 需要与外部工具（如 Kimi Code CLI）的私有输出格式、协议或行为做对接时，**必须先把对应项目的源码 clone 到本地并阅读相关源码**，而不是仅依赖运行观察、二进制字符串搜索或社区二手资料。
 
 - 例如对接 Kimi Code CLI 的输出格式时，应 clone `https://github.com/MoonshotAI/kimi-code.git`（或确认当前使用的 fork/版本），找到 `apps/kimi-code/src/cli/run-prompt.ts` 等关键文件。
 - 阅读源码后，把关键结论（如 `PROMPT_BLOCK_BULLET = '• '`、`text` 模式下 tool call/result 为 no-op、`tool.progress` 直接写 stderr 等）记录到 `docs/` 下的开发记录中。
 - 如果源码结论与之前的启发式实现有冲突，优先按源码修正实现。
+
+### 3b. 参考实现源码（设计调研）
+
+当设计某个功能而存在**同类/兄弟项目已经实现过**时，**必须先去阅读这些项目的实际源码**，而不是仅凭推测、迁移脚本、配置文件逆向推断。信息来源优先级：
+
+1. **GitHub 源码**（直接 `gh api` 读取、clone 到本地阅读关键模块）
+2. **官方文档**（README、`docs/`、CLI `--help`）
+3. **联网搜索**（WebSearch、官方博客/公告）
+4. **本地已安装的文件**（如配置、systemd unit、脚本）——仅作为辅助佐证
+
+具体操作：
+
+
+- 已知项目在 GitHub 上→使用 `gh api` 浏览目录树，定位关键文件后读取完整内容
+- 未知 owner →使用 `gh search repos` 搜索
+- 本地已安装→阅读安装目录下的源码，同时通过 `git remote -v` 找到上游 repo
+- **交叉验证**：将源码、文档、本地运行配置三者互相对照，避免片面理解
+
+**反例警示**：在设计 systemd 服务方案时，初始版仅凭 Hermes 的迁移脚本对 OpenClaw 做了"同为 user-level systemd 方案"的推断性描述，未实际阅读 OpenClaw 源码。后续补读 `openclaw/openclaw` 的 `src/daemon/service.ts`、`src/daemon/systemd.ts`、`src/daemon/systemd-unit.ts`、`src/cli/daemon-cli/install.ts` 等模块后，发现遗漏了大量关键设计（如 `buildSystemdUnit()` 程序化生成 unit、`KillMode=control-group`、`SuccessExitStatus=0 143`、`OOMPolicy=continue`、GatewayService 多态接口、跨平台 service 抽象、`--json` 输出、version drift 检测、token 管理等）。这些信息仅靠推断完全无法获得。
 
 ## 4. 先调研、后实现
 
