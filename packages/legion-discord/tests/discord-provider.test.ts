@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DiscordProvider } from '../src/discord-provider.js';
-import type { AgentEvent } from 'legion';
-import type { RenderState } from 'legion';
+import type { AgentEvent, RenderState } from 'legion-api';
 import type * as Discord from 'discord.js';
 
 interface MockComponent {
@@ -779,7 +778,7 @@ describe('DiscordProvider', () => {
     const handler = vi.fn();
     provider.onMessage(handler);
 
-    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => void]>;
+    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => Promise<void>]>;
     const interactionCreate = calls.find(([event]) => event === 'interactionCreate')?.[1];
     expect(interactionCreate).toBeDefined();
 
@@ -835,7 +834,7 @@ describe('DiscordProvider', () => {
     const handler = vi.fn();
     provider.onMessage(handler);
 
-    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => void]>;
+    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => Promise<void>]>;
     const interactionCreate = calls.find(([event]) => event === 'interactionCreate')?.[1];
     expect(interactionCreate).toBeDefined();
 

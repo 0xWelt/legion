@@ -143,7 +143,13 @@ function formatToolInput(input: unknown): string {
   if (input === undefined || input === null) {
     return '';
   }
-  if (typeof input !== 'object') {
+  if (
+    typeof input === 'string' ||
+    typeof input === 'number' ||
+    typeof input === 'bigint' ||
+    typeof input === 'boolean' ||
+    typeof input === 'symbol'
+  ) {
     return String(input);
   }
   const entries = Object.entries(input as Record<string, unknown>);

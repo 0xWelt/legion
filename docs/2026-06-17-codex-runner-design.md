@@ -40,36 +40,36 @@ codex exec --json --dangerously-bypass-approvals-and-sandbox resume <thread_id> 
 
 `codex exec --json` 输出的事件类型如下：
 
-| Codex 事件 | 说明 | Legion 映射 |
-|---|---|---|
-| `thread.started` | 新会话创建，携带 `thread_id` | `session_init` |
-| `turn.started` | 一轮开始 | 忽略 |
-| `turn.completed` | 一轮结束，携带 usage | `usage` + `complete` |
-| `turn.failed` | 整轮失败 | fatal `error` |
-| `error` | 顶层错误 | fatal `error` |
-| `item.started` | item 开始 | 视 item 类型映射为 `tool_call` / `thinking` / `error` |
-| `item.updated` | item 进度更新 | 仅追踪，不 emit 事件 |
-| `item.completed` | item 完成 | 视 item 类型映射为 `text` / `thinking` / `tool_result` / `error` |
+| Codex 事件       | 说明                         | Legion 映射                                                      |
+| ---------------- | ---------------------------- | ---------------------------------------------------------------- |
+| `thread.started` | 新会话创建，携带 `thread_id` | `session_init`                                                   |
+| `turn.started`   | 一轮开始                     | 忽略                                                             |
+| `turn.completed` | 一轮结束，携带 usage         | `usage` + `complete`                                             |
+| `turn.failed`    | 整轮失败                     | fatal `error`                                                    |
+| `error`          | 顶层错误                     | fatal `error`                                                    |
+| `item.started`   | item 开始                    | 视 item 类型映射为 `tool_call` / `thinking` / `error`            |
+| `item.updated`   | item 进度更新                | 仅追踪，不 emit 事件                                             |
+| `item.completed` | item 完成                    | 视 item 类型映射为 `text` / `thinking` / `tool_result` / `error` |
 
 ### Item 类型
 
-| Codex item 类型 | 说明 | Legion 映射 |
-|---|---|---|
-| `agent_message` | 模型最终回复 | `text` |
-| `reasoning` | 模型推理内容 | `thinking` |
+| Codex item 类型     | 说明           | Legion 映射                 |
+| ------------------- | -------------- | --------------------------- |
+| `agent_message`     | 模型最终回复   | `text`                      |
+| `reasoning`         | 模型推理内容   | `thinking`                  |
 | `command_execution` | shell 命令执行 | `tool_call` / `tool_result` |
-| `file_change` | 文件增删改 | `tool_call` / `tool_result` |
-| `mcp_tool_call` | MCP 工具调用 | `tool_call` / `tool_result` |
-| `web_search` | 网络搜索 | `tool_call` |
-| `todo_list` | 计划/待办列表 | 忽略 |
-| `error` | item 级错误 | 非 fatal `error` |
+| `file_change`       | 文件增删改     | `tool_call` / `tool_result` |
+| `mcp_tool_call`     | MCP 工具调用   | `tool_call` / `tool_result` |
+| `web_search`        | 网络搜索       | `tool_call`                 |
+| `todo_list`         | 计划/待办列表  | 忽略                        |
+| `error`             | item 级错误    | 非 fatal `error`            |
 
 ## Legion AgentEvent 映射
 
 ### `session_init`
 
 ```json
-{"type":"session_init","agentSessionId":"<thread_id>"}
+{ "type": "session_init", "agentSessionId": "<thread_id>" }
 ```
 
 来自 `thread.started.thread_id`。Legion 后续用 `agentSessionId` 恢复会话。
@@ -128,7 +128,7 @@ Codex 不直接提供 costUsd，因此留空。
 子进程退出后 emit：
 
 ```json
-{"type":"complete","exitCode":0}
+{ "type": "complete", "exitCode": 0 }
 ```
 
 ## 流式支持说明

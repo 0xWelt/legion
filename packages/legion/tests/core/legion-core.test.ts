@@ -36,27 +36,27 @@ class FakeProvider implements IMProvider {
   readonly embeds: Array<{ target: IMTarget; embed: unknown }> = [];
   readonly rendered: AgentEvent[] = [];
   private handlers = {
-    message: [] as Array<(msg: IMMessage) => void>,
-    threadCreate: [] as Array<(thread: IMThread) => void>,
-    threadDelete: [] as Array<(threadId: string) => void>,
-    threadArchive: [] as Array<(threadId: string, archived: boolean) => void>,
+    message: [] as Array<(msg: IMMessage) => void | Promise<void>>,
+    threadCreate: [] as Array<(thread: IMThread) => void | Promise<void>>,
+    threadDelete: [] as Array<(threadId: string) => void | Promise<void>>,
+    threadArchive: [] as Array<(threadId: string, archived: boolean) => void | Promise<void>>,
   };
 
   async start(): Promise<void> {}
 
-  onMessage(handler: (msg: IMMessage) => void): void {
+  onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.handlers.message.push(handler);
   }
 
-  onThreadCreate(handler: (thread: IMThread) => void): void {
+  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
     this.handlers.threadCreate.push(handler);
   }
 
-  onThreadDelete(handler: (threadId: string) => void): void {
+  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
     this.handlers.threadDelete.push(handler);
   }
 
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void): void {
+  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
     this.handlers.threadArchive.push(handler);
   }
 
@@ -96,7 +96,9 @@ class FakeProvider implements IMProvider {
   }
 
   async emitMessage(msg: IMMessage): Promise<void> {
-    await Promise.all(this.handlers.message.map((handler) => handler(msg)));
+    for (const handler of this.handlers.message) {
+      await handler(msg);
+    }
   }
 
   async emitThreadCreate(thread: { id: string; channelId: string; name: string }): Promise<void> {
@@ -105,7 +107,9 @@ class FakeProvider implements IMProvider {
       provider: this.name,
       createdAt: new Date(),
     };
-    await Promise.all(this.handlers.threadCreate.map((handler) => handler(imThread)));
+    for (const handler of this.handlers.threadCreate) {
+      await handler(imThread);
+    }
   }
 }
 

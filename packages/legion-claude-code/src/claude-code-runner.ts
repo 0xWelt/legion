@@ -136,7 +136,7 @@ export class ClaudeCodeRunner implements AgentRunner {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       controller.abort();
-      this.kill();
+      void this.kill();
     }, timeoutMs);
 
     const state: StreamState = { textBuffer: '', thinkingBuffer: '', emittedToolIds: new Set() };

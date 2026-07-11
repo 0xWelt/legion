@@ -2,28 +2,25 @@
   "name": "legion-lark",
   "version": "0.1.0",
   "description": "Lark (Feishu) IM provider for Legion",
+  "keywords": [
+    "feishu",
+    "im-provider",
+    "lark",
+    "legion"
+  ],
+  "license": "MIT",
+  "author": "",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "scripts": {
-    "build": "tsc",
+    "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.66.1",
     "legion-api": "*"
   },
-  "devDependencies": {
-    "legion": "*"
-  },
-  "keywords": [
-    "legion",
-    "lark",
-    "feishu",
-    "im-provider"
-  ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=20.20.2"
   }

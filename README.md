@@ -6,12 +6,12 @@ Legion 是 coding agent 与 IM 平台之间的连接层。它让你在 Discord �
 
 以 Discord 为例，Legion 把本地开发体验映射到 IM 的原生结构上：
 
-| 本地开发 | Legion |
-|---|---|
-| 一个项目目录 | 一个 Discord Channel（即 main session） |
-| 一个独立对话上下文 | 一个 Discord Thread（即 sub session） |
+| 本地开发                               | Legion                                          |
+| -------------------------------------- | ----------------------------------------------- |
+| 一个项目目录                           | 一个 Discord Channel（即 main session）         |
+| 一个独立对话上下文                     | 一个 Discord Thread（即 sub session）           |
 | 同一窗口的不同标签页共享同一个项目目录 | 同一 Channel 下的所有 Thread 共享同一个 workdir |
-| agent 的输出与工具调用 | Channel / Thread 里的消息与卡片 |
+| agent 的输出与工具调用                 | Channel / Thread 里的消息与卡片                 |
 
 ## 整体架构
 
@@ -116,12 +116,12 @@ Legion 会调用本地默认 agent（如 `kimi` 或 `claude`），并把回复�
 
 ## 常用命令
 
-| 命令 | 作用 |
-|---|---|
-| `/workdir <path>` | 绑定/查看当前 Channel 的 workdir |
-| `/status` | 查看当前 workdir 与 Session 的状态 |
+| 命令                                             | 作用                                      |
+| ------------------------------------------------ | ----------------------------------------- |
+| `/workdir <path>`                                | 绑定/查看当前 Channel 的 workdir          |
+| `/status`                                        | 查看当前 workdir 与 Session 的状态        |
 | `/agent [--global\|--workdir\|--session] [name]` | 查看或切换 runner，默认只影响当前 Session |
-| `/help` | 显示可用命令说明 |
+| `/help`                                          | 显示可用命令说明                          |
 
 所有命令同时支持文本消息和 Discord Slash Command。
 
@@ -131,18 +131,18 @@ Legion 会调用本地默认 agent（如 `kimi` 或 `claude`），并把回复�
 
 Legion 默认以各 runner 能达到的最高自动权限运行，不需要在配置里手动开启。
 
-| Runner | 非交互式 | 恢复会话 | 流式返回 | 无人值守 | 用量/费用 |
-|---|---|---|---|---|---|
-| `kimi-code` | `kimi -p`<br>✅ | `--session <id>`<br>✅ | `--output-format stream-json`<br>⚠️ 1. thinking 完全不输出；2. assistant text 不会逐 token 流式推送，而是生成完整一段后才一次性返回 | `kimi -p` 自动使用 auto 模式<br>✅ | ✅ |
-| `claude-code` | `claude -p`<br>✅ | `--resume <id>`<br>✅ | `--output-format stream-json --verbose --include-partial-messages`<br>✅ 支持 token 级流式（text / thinking / tool input JSON delta） | `--permission-mode bypassPermissions`<br>✅ | ✅ |
-| `codex` | `codex exec`<br>✅ | `codex exec resume <id>`<br>✅ | `codex exec --json`<br>⚠️ JSONL 按 item 输出，text 与 tool result 均为完成时一次性返回，无 token 级流式 | `--dangerously-bypass-approvals-and-sandbox`<br>✅ | ✅ |
+| Runner        | 非交互式           | 恢复会话                       | 流式返回                                                                                                                              | 无人值守                                           | 用量/费用 |
+| ------------- | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | --------- |
+| `kimi-code`   | `kimi -p`<br>✅    | `--session <id>`<br>✅         | `--output-format stream-json`<br>⚠️ 1. thinking 完全不输出；2. assistant text 不会逐 token 流式推送，而是生成完整一段后才一次性返回   | `kimi -p` 自动使用 auto 模式<br>✅                 | ✅        |
+| `claude-code` | `claude -p`<br>✅  | `--resume <id>`<br>✅          | `--output-format stream-json --verbose --include-partial-messages`<br>✅ 支持 token 级流式（text / thinking / tool input JSON delta） | `--permission-mode bypassPermissions`<br>✅        | ✅        |
+| `codex`       | `codex exec`<br>✅ | `codex exec resume <id>`<br>✅ | `codex exec --json`<br>⚠️ JSONL 按 item 输出，text 与 tool result 均为完成时一次性返回，无 token 级流式                               | `--dangerously-bypass-approvals-and-sandbox`<br>✅ | ✅        |
 
 ## IM 支持矩阵
 
-| 平台 | Workspace 映射 | Session 映射 | 命令入口 / 输入中提示 | 流式回复 | 内容折叠 | 消息长度限制 |
-|---|---|---|---|---|---|---|
-| Discord | Text Channel | Channel / Thread | ✅ 原生 Slash Command<br>✅ 输入中提示 | Components V2 线性渲染，文本块级编辑 + debounce（⚠️ 超长内容自动拆分为多条消息） | 按事件类型分色 Container（text / thinking / tool_call / tool_result / error） | 单条 4000 字符（Components V2），超长自动拆分 |
-| Lark（飞书） | Chat（群聊） | Chat / 回复消息 | 文本命令解析（⚠️ 无原生 slash command）<br>❌ 无 typing 提示 | 单张交互卡片全量更新（⚠️ 同 Chat 内只有一张汇总卡片，多 session 并行时互相覆盖） | 折叠面板 | 主文本 3000 / 面板 2000 |
+| 平台         | Workspace 映射 | Session 映射     | 命令入口 / 输入中提示                                        | 流式回复                                                                         | 内容折叠                                                                      | 消息长度限制                                  |
+| ------------ | -------------- | ---------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------- |
+| Discord      | Text Channel   | Channel / Thread | ✅ 原生 Slash Command<br>✅ 输入中提示                       | Components V2 线性渲染，文本块级编辑 + debounce（⚠️ 超长内容自动拆分为多条消息） | 按事件类型分色 Container（text / thinking / tool_call / tool_result / error） | 单条 4000 字符（Components V2），超长自动拆分 |
+| Lark（飞书） | Chat（群聊）   | Chat / 回复消息  | 文本命令解析（⚠️ 无原生 slash command）<br>❌ 无 typing 提示 | 单张交互卡片全量更新（⚠️ 同 Chat 内只有一张汇总卡片，多 session 并行时互相覆盖） | 折叠面板                                                                      | 主文本 3000 / 面板 2000                       |
 
 ## 配置示例
 
@@ -171,16 +171,18 @@ Legion 默认以各 runner 能达到的最高自动权限运行，不需要在�
 
 ## 开发
 
-项目采用 TypeScript + npm workspaces，核心命令：
+项目已迁移到 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口：
 
 ```bash
-npm run dev        # 开发运行
-npm run build      # 构建
-npm run typecheck  # 类型检查
-npm run lint       # 代码检查
-npm run test       # 运行测试
-npm run format     # 格式化
+vp dev             # 开发运行（相当于 npm run dev）
+vp run -r build    # 构建所有 workspace 包
+vp check           # 格式化 + lint + 类型检查
+vp test            # 运行测试
+vp fmt --write     # 格式化
+vp lint --fix      # 自动修复 lint
 ```
+
+> 说明：`vp` 会读取根目录的 `vite.config.ts`，统一配置 formatter（Oxfmt）、linter（Oxlint）、测试（Vitest）、构建（`vp pack`）与 git hooks。不再需要单独的 Prettier、ESLint、lefthook 或 `tsc --build`。
 
 更详细的架构设计、接口说明、实现记录与调试方法请见 [`docs/`](docs/)。
 

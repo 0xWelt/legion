@@ -1,5 +1,7 @@
 import type { ConfigContribution, IMProvider, PromptContext } from 'legion-api';
 
+import { DiscordProvider } from './discord-provider.js';
+
 export interface DiscordConfig {
   botToken: string;
   allowedGuildId: string;
@@ -28,7 +30,6 @@ export function normalizeDiscordConfig(raw: unknown): DiscordProviderOptions {
 }
 
 async function createDiscordProvider(config: DiscordProviderOptions): Promise<IMProvider> {
-  const { DiscordProvider } = await import('./discord-provider.js');
   return new DiscordProvider(config);
 }
 

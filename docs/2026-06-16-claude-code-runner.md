@@ -20,12 +20,12 @@ claude -p "say hi" --output-format stream-json --verbose
 
 输出是 **NDJSON**，每行一个 JSON 对象。关键事件类型：
 
-| `type` | 含义 | Legion 事件映射 |
-|---|---|---|
-| `system` / `init` | 会话初始化，含 `session_id` | `session_init` |
-| `assistant` | 助手回复，内含 `content` 数组 | `thinking` / `text` / `tool_call` |
-| `user` | 用户/工具侧消息，内含 `tool_result` | `tool_result` |
-| `result` | 最终总结，含 `usage` / `modelUsage` / `total_cost_usd` | `usage` + `complete` |
+| `type`            | 含义                                                   | Legion 事件映射                   |
+| ----------------- | ------------------------------------------------------ | --------------------------------- |
+| `system` / `init` | 会话初始化，含 `session_id`                            | `session_init`                    |
+| `assistant`       | 助手回复，内含 `content` 数组                          | `thinking` / `text` / `tool_call` |
+| `user`            | 用户/工具侧消息，内含 `tool_result`                    | `tool_result`                     |
+| `result`          | 最终总结，含 `usage` / `modelUsage` / `total_cost_usd` | `usage` + `complete`              |
 
 `assistant.content` 数组中的元素类型：
 

@@ -1,6 +1,8 @@
 import type { ConfigContribution, IMProvider, PromptContext } from 'legion-api';
 import type * as lark from '@larksuiteoapi/node-sdk';
 
+import { LarkProvider } from './lark-provider.js';
+
 export interface LarkConfig {
   appId: string;
   appSecret: string;
@@ -41,7 +43,6 @@ export function normalizeLarkConfig(raw: unknown): LarkConfig {
 }
 
 async function createLarkProvider(config: LarkConfig): Promise<IMProvider> {
-  const { LarkProvider } = await import('./lark-provider.js');
   return new LarkProvider(config);
 }
 

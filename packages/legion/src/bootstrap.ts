@@ -9,7 +9,7 @@ import {
   type IMCommandDefinition,
   type IMProvider,
   type LegionConfig,
-} from 'legion';
+} from './index.js';
 
 const CANDIDATE_MODULES = [
   'legion-discord',

@@ -34,10 +34,12 @@ import type {
 export class DiscordProvider implements IMProvider {
   readonly name = 'discord';
   private readonly client: Client;
-  private messageHandlers: Array<(msg: IMMessage) => void> = [];
-  private threadCreateHandlers: Array<(thread: IMThread) => void> = [];
-  private threadDeleteHandlers: Array<(threadId: string) => void> = [];
-  private threadArchiveHandlers: Array<(threadId: string, archived: boolean) => void> = [];
+  private messageHandlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
+  private threadCreateHandlers: Array<(thread: IMThread) => void | Promise<void>> = [];
+  private threadDeleteHandlers: Array<(threadId: string) => void | Promise<void>> = [];
+  private threadArchiveHandlers: Array<
+    (threadId: string, archived: boolean) => void | Promise<void>
+  > = [];
   private toolNames = new Map<string, string>();
   private pendingInteractions = new Map<string, ChatInputCommandInteraction>();
   private commandDefinitions: IMCommandDefinition[] = [];
@@ -80,7 +82,7 @@ export class DiscordProvider implements IMProvider {
       };
 
       for (const handler of this.messageHandlers) {
-        handler(imMsg);
+        void handler(imMsg);
       }
     });
 
@@ -100,14 +102,14 @@ export class DiscordProvider implements IMProvider {
         createdAt: thread.createdAt ?? new Date(),
       };
       for (const handler of this.threadCreateHandlers) {
-        handler(imThread);
+        void handler(imThread);
       }
     });
 
     this.client.on('threadDelete', (thread) => {
       if (thread.guildId !== this.options.allowedGuildId) return;
       for (const handler of this.threadDeleteHandlers) {
-        handler(thread.id);
+        void handler(thread.id);
       }
     });
 
@@ -115,7 +117,7 @@ export class DiscordProvider implements IMProvider {
       if (newThread.guildId !== this.options.allowedGuildId) return;
       if (oldThread.archived !== newThread.archived) {
         for (const handler of this.threadArchiveHandlers) {
-          handler(newThread.id, newThread.archived ?? false);
+          void handler(newThread.id, newThread.archived ?? false);
         }
       }
     });
@@ -180,7 +182,7 @@ export class DiscordProvider implements IMProvider {
     }
 
     try {
-      await Promise.all(this.messageHandlers.map((handler) => handler(imMsg)));
+      await Promise.all(this.messageHandlers.map((handler) => Promise.resolve(handler(imMsg))));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await interaction.editReply(`❌ ${message}`);
@@ -188,19 +190,19 @@ export class DiscordProvider implements IMProvider {
     }
   }
 
-  onMessage(handler: (msg: IMMessage) => void): void {
+  onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.messageHandlers.push(handler);
   }
 
-  onThreadCreate(handler: (thread: IMThread) => void): void {
+  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
     this.threadCreateHandlers.push(handler);
   }
 
-  onThreadDelete(handler: (threadId: string) => void): void {
+  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
     this.threadDeleteHandlers.push(handler);
   }
 
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void): void {
+  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
     this.threadArchiveHandlers.push(handler);
   }
 
@@ -650,7 +652,12 @@ export class DiscordProvider implements IMProvider {
     if (typeof input === 'string') {
       return '```json\n' + input + '\n```';
     }
-    if (typeof input !== 'object') {
+    if (
+      typeof input === 'number' ||
+      typeof input === 'bigint' ||
+      typeof input === 'boolean' ||
+      typeof input === 'symbol'
+    ) {
       return String(input);
     }
     const entries = Object.entries(input as Record<string, unknown>);

@@ -4,11 +4,11 @@
 
 项目中的 Markdown 文档按读者分层，避免把开发记录塞进用户文档：
 
-| 文件/目录 | 读者 | 内容范围 |
-|---|---|---|
-| `README.md` | 最终用户（使用 Legion 的人） | 项目简介、前置要求、配置步骤、使用命令、快速开始 |
-| `docs/` | 开发者 / 维护者 / Agent | 设计稿、调研、开发记录、实现细节、调试方法、已知限制 |
-| `AGENTS.md` | Agent（本工具） | Agent 协作规范、代码风格、目录约定等 |
+| 文件/目录   | 读者                         | 内容范围                                             |
+| ----------- | ---------------------------- | ---------------------------------------------------- |
+| `README.md` | 最终用户（使用 Legion 的人） | 项目简介、前置要求、配置步骤、使用命令、快速开始     |
+| `docs/`     | 开发者 / 维护者 / Agent      | 设计稿、调研、开发记录、实现细节、调试方法、已知限制 |
+| `AGENTS.md` | Agent（本工具）              | Agent 协作规范、代码风格、目录约定等                 |
 
 - 不要往 `README.md` 里放源码级实现细节、调试脚本、内部决策过程。
 - 需要记录“为什么这样实现”“踩过什么坑”“内部限制”时，写到 `docs/` 下的文档里，并遵循下方的日期规范。
@@ -50,3 +50,20 @@
 5. **记录结论**：把协议/事件矩阵、踩坑点、未支持的能力写到 `docs/` 下的日期前缀文档中，再开始编码。
 
 **反例警示**：在实现 `legion-codex` runner 时，曾因未先完整阅读 Codex CLI 源码和 SDK 事件定义，仅凭几次 `codex exec --json` 的运行观察就推断事件类型，导致初版遗漏了 `item.updated`、`turn.failed`、顶层 `error`、以及 `reasoning`/`file_change`/`mcp_tool_call`/`web_search`/`todo_list` 等多种 item 类型。后续虽通过补读源码修正，但产生了不必要的返工。以后接到类似任务，必须完成上述 1–5 步后再提交第一版实现。
+
+## 5. 工具链与命令入口
+
+项目已统一使用 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口。
+
+- **格式化**：`vp fmt` / `vp fmt --write`（Oxfmt，替代 Prettier）。
+- **Lint**：`vp lint` / `vp lint --fix`（Oxlint，替代 ESLint + typescript-eslint）。
+- **类型检查**：`vp check` 会自动运行类型检查（tsgo）；不再使用 `tsc --noEmit`。
+- **测试**：`vp test`（Vitest，配置在根 `vite.config.ts` 的 `test` 字段）。
+- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`；根 `npm run build` 实际为 `vp run -r build`）。
+- **Git Hooks**：由 `vp config` / `prepare` 自动安装，配置在根 `vite.config.ts` 的 `staged` 字段；不再使用 lefthook。
+
+因此：
+
+- 不要新增 `.prettierrc`、`.prettierignore`、`lefthook.yml`、`eslint.config.mjs` 等旧工具配置。
+- 不要往 `package.json` 的 `scripts` 里塞 `format`、`format:check`、`lint`、`lint:fix`、`typecheck`、`test`、`check` 等可由 `vp` 替代的脚本；只保留项目特定的脚本（如 `dev`、`start`、`build`、`prepare`）。
+- 修改代码风格或 lint 规则时，优先改根 `vite.config.ts` 里的 `fmt` / `lint` 字段，而不是新建独立的配置文件。

@@ -24,7 +24,8 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
-# IDE
+# Vite+ hooks
+.vite-hooks/
 .idea/
 .vscode/
 *.swp
