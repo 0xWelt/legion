@@ -2,11 +2,17 @@
   "name": "legion-claude-code",
   "version": "0.1.0",
   "description": "Claude Code agent runner for Legion",
+  "keywords": [
+    "claude-code",
+    "coding-agent"
+  ],
+  "license": "MIT",
+  "author": "",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "scripts": {
-    "build": "tsc",
+    "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
@@ -15,12 +21,6 @@
   "devDependencies": {
     "legion": "*"
   },
-  "keywords": [
-    "claude-code",
-    "coding-agent"
-  ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=20.20.2"
   }

@@ -1,10 +1,9 @@
 import { resolve } from 'node:path';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       'legion-api': resolve(__dirname, 'packages/legion-api/src/index.ts'),
       legion: resolve(__dirname, 'packages/legion/src/index.ts'),
@@ -25,5 +24,22 @@ export default defineConfig({
       include: ['packages/*/src/**/*.ts'],
       exclude: ['packages/*/src/**/*.test.ts', 'packages/*/src/**/*.d.ts'],
     },
+  },
+  fmt: {
+    singleQuote: true,
+    semi: true,
+    trailingComma: 'es5',
+    printWidth: 100,
+    tabWidth: 2,
+    useTabs: false,
+  },
+  lint: {
+    options: {
+      typeAware: true,
+      typeCheck: true,
+    },
+  },
+  staged: {
+    '*.{ts,mjs,json,md,yml,yaml}': ['vp fmt --write', 'vp lint --fix'],
   },
 });

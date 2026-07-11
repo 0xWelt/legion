@@ -68,7 +68,7 @@ export class KimiCodeRunner implements AgentRunner {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       controller.abort();
-      this.kill();
+      void this.kill();
     }, timeoutMs);
 
     try {

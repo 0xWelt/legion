@@ -27,10 +27,10 @@ export interface IMProvider {
 
   renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState>;
 
-  onMessage(handler: (msg: IMMessage) => void): void;
-  onThreadCreate(handler: (thread: IMThread) => void): void;
-  onThreadDelete(handler: (threadId: string) => void): void;
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void): void;
+  onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
+  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void;
+  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void;
+  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void;
 }
 
 export interface IMTarget {

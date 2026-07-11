@@ -46,11 +46,11 @@ Telegram`"]
 
 Legion 不把远程使用当作一个"聊天机器人"来设计，而是把它当作**本地开发体验在 IM 上的映射**。三个核心概念对应三种日常开发动作：
 
-| 本地开发动作 | Legion 抽象 | 说明 |
-|---|---|---|
-| 打开一个 VSCode 窗口并绑定到某个 repo | **Workspace** | 一个 IM 群/Channel 对应一个项目目录 |
-| 在窗口里开多个标签页/聊天线程 | **Session** | 每个 Thread 是一个独立对话上下文 |
-| 看 terminal 里 agent 逐段输出文本、调用工具 | **AgentEvent** | 统一的 agent 输出事件流 |
+| 本地开发动作                                | Legion 抽象    | 说明                                |
+| ------------------------------------------- | -------------- | ----------------------------------- |
+| 打开一个 VSCode 窗口并绑定到某个 repo       | **Workspace**  | 一个 IM 群/Channel 对应一个项目目录 |
+| 在窗口里开多个标签页/聊天线程               | **Session**    | 每个 Thread 是一个独立对话上下文    |
+| 看 terminal 里 agent 逐段输出文本、调用工具 | **AgentEvent** | 统一的 agent 输出事件流             |
 
 这种隐喻的好处是：用户不需要学习 Legion 独有的概念。Discord Channel 就是 Workspace，Thread 就是 Session，agent 的回复就是消息。
 
@@ -82,11 +82,11 @@ Workspace 对应一个项目目录。每个 Discord Text Channel 绑定一个本
 
 ```ts
 interface Workspace {
-  id: string;           // Discord Channel ID
-  name: string;         // Channel 名称，如 "repo-a"
-  workdir: string;      // 本地绝对路径
+  id: string; // Discord Channel ID
+  name: string; // Channel 名称，如 "repo-a"
+  workdir: string; // 本地绝对路径
   defaultAgent: string; // 默认 agent，如 "kimi"
-  guildId: string;      // 所属 Discord Server ID
+  guildId: string; // 所属 Discord Server ID
   createdAt: string;
 }
 ```
@@ -105,13 +105,13 @@ Session 对应一个独立的对话上下文。Legion Session.id 直接复用 Di
 
 ```ts
 interface Session {
-  id: string;              // Discord Channel ID（main）或 Thread ID（thread）
-  name: string;            // Channel/Thread 名称
-  workspaceId: string;     // 父 Workspace ID
-  type: "main" | "thread"; // main = Channel 本身；thread = Thread
-  agent: string;           // agent 类型
+  id: string; // Discord Channel ID（main）或 Thread ID（thread）
+  name: string; // Channel/Thread 名称
+  workspaceId: string; // 父 Workspace ID
+  type: 'main' | 'thread'; // main = Channel 本身；thread = Thread
+  agent: string; // agent 类型
   agentSessionId?: string; // 底层 agent CLI 的 session id
-  status: "idle" | "running" | "error";
+  status: 'idle' | 'running' | 'error';
   createdAt: string;
   lastUsedAt: string;
 }
@@ -147,15 +147,15 @@ type AgentEvent =
 
 interface TextEvent {
   type: 'text';
-  text: string;    // 当前累积的完整文本
-  delta?: string;  // 可选增量，用于字符级流式
+  text: string; // 当前累积的完整文本
+  delta?: string; // 可选增量，用于字符级流式
 }
 
 interface ToolCallEvent {
   type: 'tool_call';
   toolId: string;
   toolName: string;
-  input: unknown;  // 已解析的完整工具参数
+  input: unknown; // 已解析的完整工具参数
 }
 
 interface ToolCallDeltaEvent {
@@ -163,7 +163,7 @@ interface ToolCallDeltaEvent {
   toolId: string;
   toolName: string;
   partialInput: string; // 当前累积的 JSON 字符串（尚未保证可解析）
-  delta: string;        // 本次增量 JSON 片段
+  delta: string; // 本次增量 JSON 片段
 }
 
 interface ToolResultEvent {
@@ -174,8 +174,8 @@ interface ToolResultEvent {
 
 interface ThinkingEvent {
   type: 'thinking';
-  text: string;    // 当前累积的完整 thinking
-  delta?: string;  // 可选增量，用于字符级流式
+  text: string; // 当前累积的完整 thinking
+  delta?: string; // 可选增量，用于字符级流式
 }
 
 interface SessionInitEvent {
@@ -240,11 +240,11 @@ KimiRunner v1`"]
 workspace.workdir`"]
 ```
 
-| 层级 | 职责 | 主要接口/类 |
-|---|---|---|
-| **Agent 适配层** | 封装 coding agent CLI，把私有输出翻译成统一 `AgentEvent` | `AgentRunner`、`AgentRunnerFactory`、`AgentConfig`、`SessionContext` |
-| **Legion Core** | 会话管理、消息路由、命令解析、状态持久化 | `LegionCore`、`WorkspaceManager`、`SessionManager`、`MessageRouter`、`CommandParser`、`StateStore` |
-| **IM 适配层** | 对接具体 IM 平台，把 `AgentEvent` 渲染成平台消息 | `IMProvider`、`IMTarget`、`IMMessageRef`、`IMMessage`、`IMThread`、`RenderState` |
+| 层级             | 职责                                                     | 主要接口/类                                                                                        |
+| ---------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Agent 适配层** | 封装 coding agent CLI，把私有输出翻译成统一 `AgentEvent` | `AgentRunner`、`AgentRunnerFactory`、`AgentConfig`、`SessionContext`                               |
+| **Legion Core**  | 会话管理、消息路由、命令解析、状态持久化                 | `LegionCore`、`WorkspaceManager`、`SessionManager`、`MessageRouter`、`CommandParser`、`StateStore` |
+| **IM 适配层**    | 对接具体 IM 平台，把 `AgentEvent` 渲染成平台消息         | `IMProvider`、`IMTarget`、`IMMessageRef`、`IMMessage`、`IMThread`、`RenderState`                   |
 
 ### 4.2 依赖方向
 
@@ -375,15 +375,15 @@ Legion 状态持久化到 `~/.legion/state.json`：
 
 Legion 采用 **TypeScript / Node.js** 实现。
 
-| 考量 | 说明 |
-|---|---|
-| Discord 生态 | `discord.js` 是 Node 生态事实标准。 |
-| 子进程调用 | Node 的 `child_process.spawn` 非常适合流式消费 JSONL/NDJSON。 |
-| 异步事件驱动 | 与 `AgentEvent` 流、IM 事件、debounce 编辑天然契合。 |
-| IM SDK 丰富 | 飞书、Slack、Telegram 都有成熟的 Node SDK。 |
-| 类型安全 | TypeScript 能精确表达 `AgentRunner`、`IMProvider`、`AgentEvent` 等接口。 |
-| 环境一致 | 当前环境已有 Node.js `v24.13.0` / npm `v11.7.0`。 |
-| Agent 技术栈一致 | Kimi Code CLI 本身基于 Node/TypeScript，便于参考其 `stream-json` 解析。 |
+| 考量             | 说明                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| Discord 生态     | `discord.js` 是 Node 生态事实标准。                                      |
+| 子进程调用       | Node 的 `child_process.spawn` 非常适合流式消费 JSONL/NDJSON。            |
+| 异步事件驱动     | 与 `AgentEvent` 流、IM 事件、debounce 编辑天然契合。                     |
+| IM SDK 丰富      | 飞书、Slack、Telegram 都有成熟的 Node SDK。                              |
+| 类型安全         | TypeScript 能精确表达 `AgentRunner`、`IMProvider`、`AgentEvent` 等接口。 |
+| 环境一致         | 当前环境已有 Node.js `v24.13.0` / npm `v11.7.0`。                        |
+| Agent 技术栈一致 | Kimi Code CLI 本身基于 Node/TypeScript，便于参考其 `stream-json` 解析。  |
 
 **关键依赖**：`discord.js`、Node 内置模块。MVP 阶段以轻量依赖为主。
 
@@ -438,11 +438,11 @@ interface AgentRunner {
 }
 
 interface SessionContext {
-  sessionId: string;        // Legion Session.id
-  workdir: string;          // Workspace 绝对路径
-  agentSessionId?: string;  // 底层 agent CLI 的 session id；首次调用时为空
-  model?: string;           // 用户指定的模型
-  threadName?: string;      // Thread/Session 名称
+  sessionId: string; // Legion Session.id
+  workdir: string; // Workspace 绝对路径
+  agentSessionId?: string; // 底层 agent CLI 的 session id；首次调用时为空
+  model?: string; // 用户指定的模型
+  threadName?: string; // Thread/Session 名称
 }
 ```
 
@@ -482,14 +482,14 @@ factory.register('mimo', (config) => new MiMoCodeRunner(config));
 
 ### 7.3 支持的 Coding Agent 对照
 
-| Coding Agent | 创建 Session | 恢复 Session | 关键输出格式 | `agentSessionId` 来源 |
-|---|---|---|---|---|
-| **Kimi Code** | `kimi -p "..." --output-format stream-json` | `kimi --session <id> -p "..." --output-format stream-json` | JSONL：`role=assistant/tool/meta` | `meta.session.resume_hint.session_id` |
-| **Claude Code** | `claude -p "..." --output-format stream-json --verbose --permission-mode bypassPermissions` | `claude -p "..." --resume <id> --output-format stream-json --verbose --permission-mode bypassPermissions` | JSONL：`type=system/assistant/user/result` | `system.subtype=init.session_id` |
-| **Codex CLI** | `codex exec --json "..."` | `codex exec resume --json <id> "..."` | JSONL：`type=thread.started/turn.completed/item.completed/error` | `thread.started.thread_id` |
-| **OpenCode** | `opencode run --format json "..."` | `opencode run --session ses_xxx --format json "..."` | JSONL：`type=step_start/text/tool_use/step_finish/...` | `step_start.sessionID` |
-| **Qwen Code** | `qwen --prompt "..." --output-format stream-json` | `qwen --prompt "..." --resume <id> --output-format stream-json` | JSONL：`type=text/tool_call/tool_result/...` | `step_start` / `init` 中的 session id |
-| **MiMo Code** | `mimo run --format json "..."` | `mimo run --session <id> --format json "..."` | JSONL：`type=step_start/text/tool_use/step_finish/...` | `step_start.sessionID` |
+| Coding Agent    | 创建 Session                                                                                | 恢复 Session                                                                                              | 关键输出格式                                                     | `agentSessionId` 来源                 |
+| --------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------- |
+| **Kimi Code**   | `kimi -p "..." --output-format stream-json`                                                 | `kimi --session <id> -p "..." --output-format stream-json`                                                | JSONL：`role=assistant/tool/meta`                                | `meta.session.resume_hint.session_id` |
+| **Claude Code** | `claude -p "..." --output-format stream-json --verbose --permission-mode bypassPermissions` | `claude -p "..." --resume <id> --output-format stream-json --verbose --permission-mode bypassPermissions` | JSONL：`type=system/assistant/user/result`                       | `system.subtype=init.session_id`      |
+| **Codex CLI**   | `codex exec --json "..."`                                                                   | `codex exec resume --json <id> "..."`                                                                     | JSONL：`type=thread.started/turn.completed/item.completed/error` | `thread.started.thread_id`            |
+| **OpenCode**    | `opencode run --format json "..."`                                                          | `opencode run --session ses_xxx --format json "..."`                                                      | JSONL：`type=step_start/text/tool_use/step_finish/...`           | `step_start.sessionID`                |
+| **Qwen Code**   | `qwen --prompt "..." --output-format stream-json`                                           | `qwen --prompt "..." --resume <id> --output-format stream-json`                                           | JSONL：`type=text/tool_call/tool_result/...`                     | `step_start` / `init` 中的 session id |
+| **MiMo Code**   | `mimo run --format json "..."`                                                              | `mimo run --session <id> --format json "..."`                                                             | JSONL：`type=step_start/text/tool_use/step_finish/...`           | `step_start.sessionID`                |
 
 **关于 GLM / MiniMax**：智谱 GLM 与 MiniMax 目前都没有官方独立维护的 coding agent CLI，因此第一阶段不把它们作为独立 Runner 实现。未来如果官方推出原生 CLI，再按同样接口接入。
 
@@ -539,11 +539,7 @@ interface IMProvider {
   sendTyping(target: IMTarget): Promise<void>;
 
   // AgentEvent 渲染
-  renderEvent(
-    target: IMTarget,
-    event: AgentEvent,
-    state: RenderState
-  ): Promise<RenderState>;
+  renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState>;
 
   // 事件监听
   onMessage(handler: (msg: IMMessage) => void): void;
@@ -570,15 +566,15 @@ interface RenderState {
 
 Legion 的"流式"是**事件驱动编辑**：`IMProvider.renderEvent()` 每收到一个 `AgentEvent`，就更新对应 Channel/Thread 的平台消息。
 
-| Agent / Runner | 事件粒度 | 流式体验 |
-|---|---|---|
-| `kimi-code`（`--output-format stream-json`） | 完整 assistant block | 块级更新；thinking 不输出；assistant text 以单个 JSON 事件整段返回，无 token 级流式 |
-| `kimi-code-text`（`--output-format text`） | stdout 字符/块 | stdout 按字符/块流式；但无法识别具体工具名/参数，stderr 中非 bullet 的 progress 文本需靠启发式与 thinking 区分 |
-| Claude Code | 完整 block + 可选 partial | 默认块级；可字符级 |
-| Codex CLI | `item.completed` 完整块 | 块级更新 |
-| OpenCode | `text` 完整块 | 块级更新 |
-| Qwen Code | `stream-json` 事件 | 块级或句子级 |
-| MiMo Code | `step` 完整块 | 块级更新 |
+| Agent / Runner                               | 事件粒度                  | 流式体验                                                                                                       |
+| -------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `kimi-code`（`--output-format stream-json`） | 完整 assistant block      | 块级更新；thinking 不输出；assistant text 以单个 JSON 事件整段返回，无 token 级流式                            |
+| `kimi-code-text`（`--output-format text`）   | stdout 字符/块            | stdout 按字符/块流式；但无法识别具体工具名/参数，stderr 中非 bullet 的 progress 文本需靠启发式与 thinking 区分 |
+| Claude Code                                  | 完整 block + 可选 partial | 默认块级；可字符级                                                                                             |
+| Codex CLI                                    | `item.completed` 完整块   | 块级更新                                                                                                       |
+| OpenCode                                     | `text` 完整块             | 块级更新                                                                                                       |
+| Qwen Code                                    | `stream-json` 事件        | 块级或句子级                                                                                                   |
+| MiMo Code                                    | `step` 完整块             | 块级更新                                                                                                       |
 
 **工具调用渲染**：
 
@@ -612,33 +608,33 @@ flowchart TD
 
 ### 9.2 Thread 生命周期
 
-| Discord 事件 | Legion 行为 |
-|---|---|
-| `channelCreate` | 自动发送 Workspace 引导消息 |
-| `threadCreate` | 自动创建 thread session，并发送 Session 引导消息 |
-| `threadDelete` | 可选清理 Legion 自身的 session 记录；底层 agent session 文件不删除 |
-| `threadUpdate`（archived） | 标记 session 为 archived；底层 agent session 记录保留 |
-| `threadUpdate`（unarchived） | 恢复 session 为 active |
+| Discord 事件                 | Legion 行为                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `channelCreate`              | 自动发送 Workspace 引导消息                                        |
+| `threadCreate`               | 自动创建 thread session，并发送 Session 引导消息                   |
+| `threadDelete`               | 可选清理 Legion 自身的 session 记录；底层 agent session 文件不删除 |
+| `threadUpdate`（archived）   | 标记 session 为 archived；底层 agent session 记录保留              |
+| `threadUpdate`（unarchived） | 恢复 session 为 active                                             |
 
 ### 9.3 命令设计
 
 **Workspace 命令**（在 Channel 中使用）：
 
-| 命令 | 说明 |
-|---|---|
+| 命令              | 说明                        |
+| ----------------- | --------------------------- |
 | `/workdir <path>` | 绑定当前 Channel 到 workdir |
-| `/workdir` | 查看当前 workdir |
-| `/status` | 查看 Workspace 信息 |
-| `/agent <name>` | 切换默认 agent（未来） |
+| `/workdir`        | 查看当前 workdir            |
+| `/status`         | 查看 Workspace 信息         |
+| `/agent <name>`   | 切换默认 agent（未来）      |
 
 **Session 管理命令**：
 
-| 命令 | 说明 |
-|---|---|
-| `/thread new <name>` | 创建 Thread/Session |
-| `/thread list` | 列出 Thread Session |
-| `/thread archive <name>` | 归档 Thread |
-| `/thread delete <name>` | 删除 Thread |
+| 命令                     | 说明                |
+| ------------------------ | ------------------- |
+| `/thread new <name>`     | 创建 Thread/Session |
+| `/thread list`           | 列出 Thread Session |
+| `/thread archive <name>` | 归档 Thread         |
+| `/thread delete <name>`  | 删除 Thread         |
 
 ### 9.4 自动引导消息
 

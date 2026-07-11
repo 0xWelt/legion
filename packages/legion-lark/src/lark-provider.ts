@@ -20,10 +20,12 @@ export class LarkProvider implements IMProvider {
   readonly name = 'lark';
   private readonly client: lark.Client;
   private readonly eventDispatcher: lark.EventDispatcher;
-  private messageHandlers: Array<(msg: IMMessage) => void> = [];
-  private threadCreateHandlers: Array<(thread: IMThread) => void> = [];
-  private threadDeleteHandlers: Array<(threadId: string) => void> = [];
-  private threadArchiveHandlers: Array<(threadId: string, archived: boolean) => void> = [];
+  private messageHandlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
+  private threadCreateHandlers: Array<(thread: IMThread) => void | Promise<void>> = [];
+  private threadDeleteHandlers: Array<(threadId: string) => void | Promise<void>> = [];
+  private threadArchiveHandlers: Array<
+    (threadId: string, archived: boolean) => void | Promise<void>
+  > = [];
   private server?: http.Server;
   private wsClient?: lark.WSClient;
   private readonly cardStates = new Map<string, CardState>();
@@ -72,19 +74,19 @@ export class LarkProvider implements IMProvider {
     // Lark does not have native slash commands; text commands are parsed by LegionCore.
   }
 
-  onMessage(handler: (msg: IMMessage) => void): void {
+  onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.messageHandlers.push(handler);
   }
 
-  onThreadCreate(handler: (thread: IMThread) => void): void {
+  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
     this.threadCreateHandlers.push(handler);
   }
 
-  onThreadDelete(handler: (threadId: string) => void): void {
+  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
     this.threadDeleteHandlers.push(handler);
   }
 
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void): void {
+  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
     this.threadArchiveHandlers.push(handler);
   }
 

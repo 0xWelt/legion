@@ -1,49 +1,43 @@
 {
   "name": "legion-monorepo",
   "version": "0.1.0",
-  "description": "Bridge layer between coding agents and IM platforms",
   "private": true,
-  "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
-  "scripts": {
-    "build": "tsc --build",
-    "dev": "tsx packages/legion/src/bootstrap.ts",
-    "start": "node packages/legion/dist/bootstrap.js",
-    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prepare": "lefthook install"
-  },
+  "description": "Bridge layer between coding agents and IM platforms",
   "keywords": [
+    "claude-code",
     "coding-agent",
     "discord",
     "im-bridge",
-    "kimi-code",
-    "claude-code"
+    "kimi-code"
   ],
-  "author": "",
   "license": "MIT",
+  "author": "",
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "vp run -r build",
+    "dev": "tsx packages/legion/src/bootstrap.ts",
+    "start": "node packages/legion/dist/bootstrap.mjs",
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.0",
+    "vite-plus": "^0.2.4",
+    "vitest": "^4.0.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "11.7.0",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": ">=20.20.2"
   },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^22.13.0",
-    "eslint": "^10.0.0",
-    "eslint-config-prettier": "^10.0.0",
-    "globals": "^17.0.0",
-    "lefthook": "^2.0.0",
-    "prettier": "^3.5.0",
-    "tsx": "^4.19.0",
-    "typescript": "^6.0.0",
-    "typescript-eslint": "^8.24.0",
-    "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.0.0"
-  }
+  "packageManager": "npm@11.7.0"
 }

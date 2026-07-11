@@ -72,12 +72,12 @@ registerCommands?(commands: IMCommandDefinition[]): void | Promise<void>;
 
 当前注册命令：
 
-| 命令 | 作用 |
-|---|---|
-| `/workdir <path>` | 绑定/查看当前 workdir 的工作目录 |
-| `/status` | 查看当前 workdir 状态 |
+| 命令                                             | 作用                              |
+| ------------------------------------------------ | --------------------------------- |
+| `/workdir <path>`                                | 绑定/查看当前 workdir 的工作目录  |
+| `/status`                                        | 查看当前 workdir 状态             |
 | `/agent [--global\|--workdir\|--session] [name]` | 查看或切换 runner（默认 session） |
-| `/help` | 显示可用命令说明 |
+| `/help`                                          | 显示可用命令说明                  |
 
 ## 5. 关键设计决策
 
@@ -243,16 +243,16 @@ Discord 对 Bot 的消息发送和编辑都有 rate limit（社区常见经验�
 
 ### Agent / Runner
 
-| Runner | 命令 | 流式输出 | Thinking | 工具调用 |
-|---|---|---|---|---|
-| `kimi-code` | `kimi -p <prompt> --output-format stream-json [--session <id>]` | ⚠️ 1. thinking 完全不输出；2. assistant text 不会逐 token 流式推送，而是生成完整一段后才一次性返回 | ❌ CLI 不暴露 | ✅ 精确事件 |
-| `kimi-code-text` | `kimi -p <prompt> --output-format text [--session <id>]` | ⚠️ 1. stdout 按字符/块流式输出，但无法识别具体工具名/参数；2. stderr 中非 bullet 行是 `tool.progress` 原始文本，只能靠启发式规则与 thinking 区分，可能误判 | ⚠️ 有局限：thinking 以 `• ` 引导的 stderr 缩进块输出，runner 可完整捕获 | ❌ 无法识别：`text` 模式下 `writeToolCall` / `writeToolCallDelta` / `writeToolResult` 均为空实现，不输出 tool 名称/参数，只能拿到 progress 原始文本 |
+| Runner           | 命令                                                            | 流式输出                                                                                                                                                   | Thinking                                                                | 工具调用                                                                                                                                            |
+| ---------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kimi-code`      | `kimi -p <prompt> --output-format stream-json [--session <id>]` | ⚠️ 1. thinking 完全不输出；2. assistant text 不会逐 token 流式推送，而是生成完整一段后才一次性返回                                                         | ❌ CLI 不暴露                                                           | ✅ 精确事件                                                                                                                                         |
+| `kimi-code-text` | `kimi -p <prompt> --output-format text [--session <id>]`        | ⚠️ 1. stdout 按字符/块流式输出，但无法识别具体工具名/参数；2. stderr 中非 bullet 行是 `tool.progress` 原始文本，只能靠启发式规则与 thinking 区分，可能误判 | ⚠️ 有局限：thinking 以 `• ` 引导的 stderr 缩进块输出，runner 可完整捕获 | ❌ 无法识别：`text` 模式下 `writeToolCall` / `writeToolCallDelta` / `writeToolResult` 均为空实现，不输出 tool 名称/参数，只能拿到 progress 原始文本 |
 
 ### IM 平台
 
-| 平台 | Slash Command | 可折叠块 | 实时流式 |
-|---|---|---|---|
-| Discord | ✅ | ❌ 平台不支持：Discord 消息不支持 `<details>`/`<summary>`，所以 Legion 把工具调用/结果拆分为多条消息以完整显示 | ⚠️ 受 rate limit 限制：Bot 消息编辑默认 1000ms 防抖批量更新，无法做到逐字实时 |
+| 平台    | Slash Command | 可折叠块                                                                                                       | 实时流式                                                                      |
+| ------- | ------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Discord | ✅            | ❌ 平台不支持：Discord 消息不支持 `<details>`/`<summary>`，所以 Legion 把工具调用/结果拆分为多条消息以完整显示 | ⚠️ 受 rate limit 限制：Bot 消息编辑默认 1000ms 防抖批量更新，无法做到逐字实时 |
 
 ## 9. 环境变量
 

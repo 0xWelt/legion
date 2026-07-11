@@ -6,14 +6,14 @@
 
 ## 2. 与 Discord 的差异
 
-| 维度 | Discord | Lark |
-|---|---|---|
-| 会话单元 | Channel / Thread | 群聊（chat） |
-| 多会话 | Channel + Thread | 多个群聊 |
-| 消息富渲染 | Embed（不可折叠） | 消息卡片（可折叠面板 `collapsible_panel`） |
-| 事件接收 | Gateway（WebSocket） | 事件订阅：Webhook 或长连接（WebSocket） |
-| 命令 | 原生 Slash Command + 文本 | 仅文本命令 |
-| 编辑限制 | 有 rate limit | 可编辑，卡片有独立更新接口 |
+| 维度       | Discord                   | Lark                                       |
+| ---------- | ------------------------- | ------------------------------------------ |
+| 会话单元   | Channel / Thread          | 群聊（chat）                               |
+| 多会话     | Channel + Thread          | 多个群聊                                   |
+| 消息富渲染 | Embed（不可折叠）         | 消息卡片（可折叠面板 `collapsible_panel`） |
+| 事件接收   | Gateway（WebSocket）      | 事件订阅：Webhook 或长连接（WebSocket）    |
+| 命令       | 原生 Slash Command + 文本 | 仅文本命令                                 |
+| 编辑限制   | 有 rate limit             | 可编辑，卡片有独立更新接口                 |
 
 核心不同点：**Lark 的消息卡片原生支持折叠块**，因此可以把 agent 的一整轮回复（思考过程、工具调用、工具结果、最终文本）放在同一张卡片里，次要信息折叠，主回复展开显示。
 
@@ -37,15 +37,15 @@ flowchart LR
 
 ## 4. 核心映射
 
-| Legion 抽象 | Lark 对应 |
-|---|---|
-| Session | 一个群聊（chat_id） |
-| IMMessage.channelId | chat_id |
-| IMMessage.id | message_id |
-| IMMessage.authorId / authorName | sender.sender_id.open_id / sender.name |
-| IMMessage.content | 解析 `message.content` JSON 后的 `text` |
-| IMTarget.channelId | chat_id |
-| IMTarget.replyToMessageId | 可选：触发回复的 message_id |
+| Legion 抽象                     | Lark 对应                               |
+| ------------------------------- | --------------------------------------- |
+| Session                         | 一个群聊（chat_id）                     |
+| IMMessage.channelId             | chat_id                                 |
+| IMMessage.id                    | message_id                              |
+| IMMessage.authorId / authorName | sender.sender_id.open_id / sender.name  |
+| IMMessage.content               | 解析 `message.content` JSON 后的 `text` |
+| IMTarget.channelId              | chat_id                                 |
+| IMTarget.replyToMessageId       | 可选：触发回复的 message_id             |
 
 不实现 Thread：MVP 阶段每个群聊就是一个 Session。未来如需在群内使用话题回复，可把 `thread_id` 映射到 Lark 的 `thread_id`。
 
@@ -93,13 +93,13 @@ interface LarkProviderOptions {
 
 ### 6.1 消息类型选择
 
-| 场景 | Lark 消息类型 | 说明 |
-|---|---|---|
-| 命令结果、简单提示 | `text` | 纯文本 |
-| agent 完整回复 | `interactive`（卡片） | 使用 `collapsible_panel` 折叠次要信息 |
-| 工具调用 | 卡片内 `collapsible_panel` | 默认折叠 |
-| 工具结果 | 卡片内 `collapsible_panel` | 默认折叠 |
-| 思考过程 | 卡片内 `collapsible_panel` | 默认折叠 |
+| 场景               | Lark 消息类型              | 说明                                  |
+| ------------------ | -------------------------- | ------------------------------------- |
+| 命令结果、简单提示 | `text`                     | 纯文本                                |
+| agent 完整回复     | `interactive`（卡片）      | 使用 `collapsible_panel` 折叠次要信息 |
+| 工具调用           | 卡片内 `collapsible_panel` | 默认折叠                              |
+| 工具结果           | 卡片内 `collapsible_panel` | 默认折叠                              |
+| 思考过程           | 卡片内 `collapsible_panel` | 默认折叠                              |
 
 ### 6.2 单卡片动态更新方案
 
@@ -128,25 +128,19 @@ Lark 的 `collapsible_panel` 支持折叠/展开。我们采用 **一整轮回�
       "tag": "collapsible_panel",
       "header": { "tag": "plain_text", "content": "💭 思考过程" },
       "expanded": false,
-      "elements": [
-        { "tag": "div", "text": { "tag": "plain_text", "content": "..." } }
-      ]
+      "elements": [{ "tag": "div", "text": { "tag": "plain_text", "content": "..." } }]
     },
     {
       "tag": "collapsible_panel",
       "header": { "tag": "plain_text", "content": "🔧 工具调用" },
       "expanded": false,
-      "elements": [
-        { "tag": "div", "text": { "tag": "plain_text", "content": "..." } }
-      ]
+      "elements": [{ "tag": "div", "text": { "tag": "plain_text", "content": "..." } }]
     },
     {
       "tag": "collapsible_panel",
       "header": { "tag": "plain_text", "content": "📤 工具结果" },
       "expanded": false,
-      "elements": [
-        { "tag": "div", "text": { "tag": "plain_text", "content": "..." } }
-      ]
+      "elements": [{ "tag": "div", "text": { "tag": "plain_text", "content": "..." } }]
     }
   ]
 }

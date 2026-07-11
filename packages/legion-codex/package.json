@@ -2,11 +2,18 @@
   "name": "legion-codex",
   "version": "0.1.0",
   "description": "OpenAI Codex CLI agent runner for Legion",
+  "keywords": [
+    "codex",
+    "coding-agent",
+    "openai-codex"
+  ],
+  "license": "MIT",
+  "author": "",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "scripts": {
-    "build": "tsc",
+    "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
@@ -15,13 +22,6 @@
   "devDependencies": {
     "legion": "*"
   },
-  "keywords": [
-    "codex",
-    "openai-codex",
-    "coding-agent"
-  ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=20.20.2"
   }

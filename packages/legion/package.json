@@ -2,22 +2,22 @@
   "name": "legion",
   "version": "0.1.0",
   "description": "Legion core and bootstrap entry",
+  "keywords": [
+    "coding-agent",
+    "im-bridge"
+  ],
+  "license": "MIT",
+  "author": "",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "scripts": {
-    "build": "tsc",
+    "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
     "legion-api": "*"
   },
-  "keywords": [
-    "coding-agent",
-    "im-bridge"
-  ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=20.20.2"
   }

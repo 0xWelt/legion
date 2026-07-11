@@ -779,7 +779,7 @@ describe('DiscordProvider', () => {
     const handler = vi.fn();
     provider.onMessage(handler);
 
-    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => void]>;
+    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => Promise<void>]>;
     const interactionCreate = calls.find(([event]) => event === 'interactionCreate')?.[1];
     expect(interactionCreate).toBeDefined();
 
@@ -835,7 +835,7 @@ describe('DiscordProvider', () => {
     const handler = vi.fn();
     provider.onMessage(handler);
 
-    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => void]>;
+    const calls = lastClient().on.mock.calls as Array<[string, (msg: unknown) => Promise<void>]>;
     const interactionCreate = calls.find(([event]) => event === 'interactionCreate')?.[1];
     expect(interactionCreate).toBeDefined();
 
