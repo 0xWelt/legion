@@ -1,4 +1,4 @@
-import { COMMAND_DEFINITIONS, type IMCommandDefinition } from 'legion';
+import { COMMAND_DEFINITIONS, type IMCommandDefinition } from 'legion-api';
 import { describe, expect, it } from 'vitest';
 import { buildCommandContent, buildSlashCommands } from '../src/discord-slash-commands.js';
 

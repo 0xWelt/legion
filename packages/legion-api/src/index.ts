@@ -35,6 +35,7 @@ export {
   createAccumulatedOutput,
 } from './im/event-accumulator.js';
 export type { AccumulatedOutput, OutputSegment } from './im/event-accumulator.js';
+export { COMMAND_DEFINITIONS } from './commands.js';
 export type {
   IMCommandDefinition,
   IMCommandOption,

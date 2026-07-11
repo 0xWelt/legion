@@ -21,9 +21,6 @@
     "@larksuiteoapi/node-sdk": "^1.66.1",
     "legion-api": "*"
   },
-  "devDependencies": {
-    "legion": "*"
-  },
   "engines": {
     "node": ">=20.20.2"
   }
