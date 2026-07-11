@@ -22,9 +22,6 @@
   "dependencies": {
     "legion-api": "workspace:*"
   },
-  "devDependencies": {
-    "legion": "workspace:*"
-  },
   "engines": {
     "node": ">=20.20.2"
   }

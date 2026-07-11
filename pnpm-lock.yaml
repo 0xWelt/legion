@@ -235,9 +235,18 @@ importers:
         specifier: workspace:*
         version: link:../legion-api
     devDependencies:
+      legion-claude-code:
+        specifier: workspace:*
+        version: link:../legion-claude-code
+      legion-codex:
+        specifier: workspace:*
+        version: link:../legion-codex
       legion-discord:
         specifier: workspace:*
         version: link:../legion-discord
+      legion-kimi-code:
+        specifier: workspace:*
+        version: link:../legion-kimi-code
       legion-lark:
         specifier: workspace:*
         version: link:../legion-lark
@@ -249,20 +258,12 @@ importers:
       legion-api:
         specifier: workspace:*
         version: link:../legion-api
-    devDependencies:
-      legion:
-        specifier: workspace:*
-        version: link:../legion
 
   packages/legion-codex:
     dependencies:
       legion-api:
         specifier: workspace:*
         version: link:../legion-api
-    devDependencies:
-      legion:
-        specifier: workspace:*
-        version: link:../legion
 
   packages/legion-discord:
     dependencies:
@@ -281,10 +282,6 @@ importers:
       legion-api:
         specifier: workspace:*
         version: link:../legion-api
-    devDependencies:
-      legion:
-        specifier: workspace:*
-        version: link:../legion
 
   packages/legion-lark:
     dependencies:

@@ -31,7 +31,10 @@
     "legion-api": "workspace:*"
   },
   "devDependencies": {
+    "legion-claude-code": "workspace:*",
+    "legion-codex": "workspace:*",
     "legion-discord": "workspace:*",
+    "legion-kimi-code": "workspace:*",
     "legion-lark": "workspace:*"
   },
   "engines": {

@@ -5,6 +5,7 @@ export type {
   RunnerState,
   SessionContext,
 } from './agent/types.js';
+export { DefaultAgentRunnerFactory } from './agent/factory.js';
 export type {
   AgentContribution,
   ConfigContribution,

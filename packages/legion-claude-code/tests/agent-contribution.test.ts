@@ -1,4 +1,4 @@
-import { DefaultAgentRunnerFactory } from 'legion';
+import { DefaultAgentRunnerFactory } from 'legion-api';
 import { describe, expect, it } from 'vitest';
 import { claudeCodeAgentContribution, ClaudeCodeRunner } from '../src/index.js';
 

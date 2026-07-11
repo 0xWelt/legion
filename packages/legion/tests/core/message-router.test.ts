@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DefaultAgentRunnerFactory } from '../../src/agent/factory.js';
+import { DefaultAgentRunnerFactory } from 'legion-api';
 import { InMemorySessionManager } from '../../src/core/session-manager.js';
 import { LegionMessageRouter } from '../../src/core/message-router.js';
 import { InMemoryWorkdirManager } from '../../src/core/workdir-manager.js';

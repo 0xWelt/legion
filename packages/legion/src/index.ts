@@ -1,4 +1,4 @@
-export { DefaultAgentRunnerFactory } from './agent/factory.js';
+export { DefaultAgentRunnerFactory } from 'legion-api';
 export type {
   AgentConfig,
   AgentRunner,
