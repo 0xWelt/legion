@@ -5,8 +5,7 @@
 # Usage: legion <command> [args...]
 #
 # Thin dispatcher that routes commands to the appropriate handler:
-#   - gateway subcommands  → scripts/legion-gateway
-#   - setup/config/agent   → node dist/bootstrap.js
+#   - setup/config/agent/gateway → node dist/bootstrap.mjs
 #
 # For development (no build needed), use:
 #   pnpm dev             → tsx src/bootstrap.ts (runs gateway)
@@ -60,11 +59,7 @@ case "$cmd" in
   --version|-v)
     node -e "console.log(require('$PROJECT_DIR/package.json').version)"
     ;;
-  gateway)
-    shift
-    exec "$SCRIPT_DIR/legion-gateway" "$@"
-    ;;
-  setup|config|agent|state)
+  setup|config|agent|state|gateway)
     exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" "$@"
     ;;
   *)

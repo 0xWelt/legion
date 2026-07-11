@@ -78,17 +78,18 @@ journalctl --user -u legion-gateway -f
 legion gateway status
 ```
 
-### 方式二：npm registry 安装（部分支持）
+### 方式二：npm registry 安装
 
-`packages/legion/package.json` 已配置 `bin` 与 `files`，因此发布后可通过 registry 安装：
+`packages/legion/package.json` 已配置 `bin` 与 `files`，发布后可通过 registry 安装：
 
 ```bash
 npm install -g legion       # 或 npx legion
 legion setup                # 配置向导
-legion gateway run          # 前台运行
+legion gateway install      # 安装 systemd 服务
+legion gateway start        # 启动后台服务
 ```
 
-> 注意：当前 systemd 服务管理脚本（`scripts/legion-gateway`、`scripts/setup.sh`）仍依赖源码目录结构，registry 安装后暂不支持 `legion gateway install/start` 等后台服务管理。后续 Phase 3 将服务管理逻辑迁移到 TypeScript 后再统一支持。
+服务管理逻辑已迁移到 TypeScript（`packages/legion/src/daemon/`），因此 registry 安装与源码安装使用完全相同的 `legion gateway` 子命令，systemd unit 中通过 `import.meta.url` 自动定位当前 `bootstrap.mjs` 路径。
 
 ### 方式三：curl 一键安装（未来，参考 OpenClaw）
 
@@ -382,23 +383,29 @@ legion agent list          → node bootstrap.js agent list
 | TypeScript（OpenClaw 方式） | 跨平台，类型安全，可复用项目模块 | 需要 node 运行时 |
 | Shell 脚本（当前选型）      | 零额外依赖，系统原生             | 平台相关         |
 
-**选型：Shell 脚本** — 当前阶段服务管理逻辑简单（systemctl 薄封装），shell 最直接。未来可演进为 OpenClaw 风格的 TypeScript 实现以获得更好的跨平台支持。
+**选型：TypeScript** — 服务管理逻辑已迁移到 `packages/legion/src/daemon/`，由 `bootstrap.ts` 的 `gateway` 子命令统一调度。该实现跨平台抽象（当前仅 Linux systemd，后续可扩展 launchd），并自动根据 `import.meta.url` 生成 ExecStart，支持源码安装与 npm registry 安装两种模式。
 
 ### 系统架构
 
-参考 OpenClaw 的分层设计 —— `service.ts` 定义多态接口，`systemd.ts` / `launchd.ts` 分别实现：
+参考 OpenClaw 的分层设计 —— `service.ts` 定义多态接口，`systemd.ts` 负责 Linux 实现，`unit.ts` 程序化生成 unit 文件：
 
 ```text
-未来演进方向（Phase 3+）：
-src/daemon/
+packages/legion/src/daemon/
 ├── service.ts            # GatewayService 多态接口
-├── service-types.ts      # 参数和返回类型
 ├── systemd.ts            # Linux systemd 实现
-├── systemd-unit.ts       # 程序化生成 unit 文件
-├── systemd-linger.ts     # linger 管理
-├── launchd.ts            # macOS launchd 实现
-└── constants.ts          # 跨平台服务名称/标签
+├── unit.ts               # 程序化生成 unit 文件
+├── paths.ts              # 可执行文件/路径解析
+└── index.ts              # gateway 子命令调度
 ```
+
+`systemd.ts` 中的 `SystemdServiceManager` 已实现：
+
+- `install(force?)` — 检测已安装状态、生成 unit、daemon-reload、enable
+- `uninstall` — stop、disable、删除 unit、daemon-reload
+- `start/stop/restart` — systemctl 薄封装
+- `status` — 解析 `systemctl status` 输出并返回 JSON
+
+与 OpenClaw 和 Hermes 不同，Legion 的 unit 生成直接使用当前运行的 `bootstrap.mjs` 绝对路径（通过 `import.meta.url` 解析），因此无需区分源码目录或 registry 安装路径。
 
 ### 工作目录
 
@@ -410,15 +417,16 @@ src/daemon/
 legion/
 ├── scripts/
 │   ├── setup.sh                # 一键安装脚本
-│   ├── legion                  # 主 CLI 入口（dispatch 到各子命令）
-│   └── legion-gateway          # gateway 服务管理脚本（bash）
+│   ├── legion                  # 主 CLI 入口（dispatch 到 bootstrap.mjs）
+│   └── legion-gateway          # 兼容旧用户的 wrapper，实际调 legion gateway
 ├── packages/
 │   └── legion/
 │       └── src/
-│           └── bootstrap.ts    # 扩展：支持 setup/config/agent 子命令
+│           ├── bootstrap.ts    # CLI 子命令入口：setup/config/agent/gateway/run
+│           └── daemon/         # TypeScript 服务管理实现
 ```
 
-> 注意：不同于 OpenClaw 和 Hermes（它们在代码中程序化生成 unit），Legion Phase 1 使用静态 `.service` 模板 + `sed` 替换占位符。这是一个务实的取舍：当前逻辑不需要区分多 profile、多 runtime 等高级特性。
+> 与 OpenClaw 一致，`daemon/unit.ts` 使用 `buildSystemdUnit()` 程序化生成 unit 文件，并自动嵌入当前运行的 `bootstrap.mjs` 路径，同时支持源码安装与 registry 安装。
 
 ### systemd unit 设计
 
@@ -778,9 +786,9 @@ process.on('SIGTERM', async () => {
 - CLI 输出 `--json` 选项（脚本友好）
 - Version drift 检测
 
-### Phase 4：npm registry 包 + Docker（后续）
+### Phase 4：npm registry 包 + Docker
 
-- `npm install -g legion` / `npx legion`：已具备基础条件（`bin` + `files`），但完整的 registry 安装体验（含 systemd 服务管理）需等待 Phase 3 的服务管理 TypeScript 化。
+- ✅ `npm install -g legion` / `npx legion`：已支持，且 `legion gateway install/start/stop/status` 在 registry 安装下也可用。
 - Docker 镜像。
 - curl 一键安装 (`install.sh`)。
 

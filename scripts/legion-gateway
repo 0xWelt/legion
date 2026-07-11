@@ -1,202 +1,23 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Legion Gateway Service Manager
+# Legion Gateway service manager (legacy wrapper)
 # ============================================================================
-# Usage: legion-gateway {install|uninstall|start|stop|restart|status|run}
+# This script is kept for backward compatibility. New code should use:
+#   legion gateway <install|uninstall|start|stop|restart|status|run>
 #
-# Manages the legion-gateway systemd user service.
-# On Linux: installs a systemd user unit.
-# On macOS: not yet supported (future: launchd plist).
+# For development (no build needed), use:
+#   pnpm dev
+# ============================================================================
 
 set -euo pipefail
 
-SERVICE_NAME="legion-gateway"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-UNIT_DST="$HOME/.config/systemd/user/$SERVICE_NAME.service"
-DEFAULT_NODE="/usr/bin/node"
 
-cmd="${1:-run}"
+if [ ! -f "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" ]; then
+  echo "错误: bootstrap.mjs 不存在，请先执行 pnpm run build" >&2
+  echo "  cd $PROJECT_DIR && pnpm run build" >&2
+  exit 1
+fi
 
-# ── Node.js detection ────────────────────────────────────────────────────
-find_node() {
-  # Priority: explicitly set > nvm node > which node > system node
-  if [ -n "${LEGION_NODE_BIN:-}" ] && [ -x "$LEGION_NODE_BIN" ]; then
-    echo "$LEGION_NODE_BIN"
-    return
-  fi
-  # nvm
-  local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
-  if [ -d "$nvm_dir/versions/node" ]; then
-    local nvm_node
-    nvm_node="$nvm_dir/versions/node/$(ls "$nvm_dir/versions/node/" 2>/dev/null | sort -V | tail -1)/bin/node"
-    if [ -x "$nvm_node" ]; then
-      echo "$nvm_node"
-      return
-    fi
-  fi
-  # PATH
-  if command -v node &>/dev/null; then
-    command -v node
-    return
-  fi
-  echo "$DEFAULT_NODE"
-}
-
-# ── resolve PATH for the service ─────────────────────────────────────────
-resolve_service_path() {
-  local parts=()
-  # nvm
-  local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
-  if [ -d "$nvm_dir/versions/node" ]; then
-    local nvm_ver
-    nvm_ver="$(ls "$nvm_dir/versions/node/" 2>/dev/null | sort -V | tail -1)"
-    if [ -n "$nvm_ver" ]; then
-      parts+=("$nvm_dir/versions/node/$nvm_ver/bin")
-    fi
-  fi
-  parts+=("$HOME/.local/bin")
-  parts+=("/usr/local/bin")
-  parts+=("/usr/bin")
-  parts+=("/bin")
-  # join with :
-  local IFS=":"
-  echo "${parts[*]}"
-}
-
-# ── Generate systemd unit ────────────────────────────────────────────────
-generate_unit() {
-  local node_bin bootstrap_mjs svc_path
-  node_bin="$(find_node)"
-  bootstrap_mjs="$PROJECT_DIR/packages/legion/dist/bootstrap.mjs"
-
-  if [ ! -f "$bootstrap_mjs" ]; then
-    echo "错误: bootstrap.mjs 不存在，请先执行 pnpm run build" >&2
-    echo "  cd $PROJECT_DIR && pnpm run build" >&2
-    exit 1
-  fi
-
-  svc_path="$(resolve_service_path)"
-
-  cat <<SYSTEMD_UNIT
-[Unit]
-Description=Legion Gateway - Coding Agent IM Bridge
-Documentation=https://github.com/0xWelt/legion
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=60
-
-[Service]
-Type=simple
-ExecStart=${node_bin} ${bootstrap_mjs} run
-WorkingDirectory=%h/.legion
-Environment="NODE_ENV=production"
-Environment="PATH=${svc_path}"
-Restart=always
-RestartSec=5
-RestartPreventExitStatus=78
-TimeoutStopSec=30
-TimeoutStartSec=30
-SuccessExitStatus=0 143
-OOMPolicy=continue
-KillMode=control-group
-KillSignal=SIGTERM
-StandardOutput=journal
-StandardError=journal
-MemoryMax=1G
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.legion
-
-[Install]
-WantedBy=default.target
-SYSTEMD_UNIT
-}
-
-# ── Check if service is already installed ────────────────────────────────
-is_installed() {
-  [ -f "$UNIT_DST" ]
-}
-
-# ── Commands ─────────────────────────────────────────────────────────────
-
-do_install() {
-  if is_installed && [ "${LEGION_FORCE:-0}" != "1" ]; then
-    echo "! Gateway service already installed."
-    echo "  Reinstall with: LEGION_FORCE=1 legion-gateway install"
-    echo "  Or:             legion-gateway uninstall && legion-gateway install"
-    return 0
-  fi
-
-  mkdir -p "$(dirname "$UNIT_DST")"
-  generate_unit > "$UNIT_DST"
-  systemctl --user daemon-reload
-  systemctl --user enable "$SERVICE_NAME" 2>/dev/null || true
-  echo "✓ Legion Gateway systemd 服务已安装"
-  echo ""
-  echo "启动服务:"
-  echo "  legion gateway start"
-  echo ""
-  echo "查看日志:"
-  echo "  journalctl --user -u $SERVICE_NAME -f"
-  echo ""
-  echo "用户注销后保持运行:"
-  echo "  sudo loginctl enable-linger \$USER"
-}
-
-do_uninstall() {
-  systemctl --user stop "$SERVICE_NAME" 2>/dev/null || true
-  systemctl --user disable "$SERVICE_NAME" 2>/dev/null || true
-  rm -f "$UNIT_DST"
-  systemctl --user daemon-reload
-  echo "✓ Legion Gateway systemd 服务已卸载"
-}
-
-do_start() {
-  systemctl --user start "$SERVICE_NAME"
-  echo "✓ 服务已启动"
-}
-
-do_stop() {
-  systemctl --user stop "$SERVICE_NAME"
-  echo "✓ 服务已停止"
-}
-
-do_restart() {
-  systemctl --user restart "$SERVICE_NAME"
-  echo "✓ 服务已重启"
-}
-
-do_status() {
-  systemctl --user status "$SERVICE_NAME" || true
-}
-
-do_run() {
-  local bootstrap_mjs="$PROJECT_DIR/packages/legion/dist/bootstrap.mjs"
-  if [ ! -f "$bootstrap_mjs" ]; then
-    echo "错误: bootstrap.mjs 不存在，请先执行 pnpm run build" >&2
-    echo "  cd $PROJECT_DIR && pnpm run build" >&2
-    exit 1
-  fi
-  echo "启动 Legion Gateway (前台模式)..."
-  echo "按 Ctrl+C 停止"
-  echo ""
-  exec "$(find_node)" "$bootstrap_mjs" run
-}
-
-case "$cmd" in
-  install)   do_install ;;
-  uninstall) do_uninstall ;;
-  start)     do_start ;;
-  stop)      do_stop ;;
-  restart)   do_restart ;;
-  status)    do_status ;;
-  run)       do_run ;;
-  *)
-    echo "用法: legion-gateway {install|uninstall|start|stop|restart|status|run}"
-    exit 1
-    ;;
-esac
+exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" gateway "$@"

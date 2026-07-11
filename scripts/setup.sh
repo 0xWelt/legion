@@ -87,7 +87,7 @@ if command -v systemctl &>/dev/null; then
   echo -e -n "${CYAN}?${NC} Install systemd service for auto-start? [Y/n] "
   read -r REPLY
   if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-    "$SCRIPT_DIR/legion-gateway" install
+    node packages/legion/dist/bootstrap.mjs gateway install
     echo ""
     echo -e "${YELLOW}!${NC} To start now: ${CYAN}legion gateway start${NC}"
     echo -e "${YELLOW}!${NC} To keep running after logout: ${CYAN}sudo loginctl enable-linger \$USER${NC}"

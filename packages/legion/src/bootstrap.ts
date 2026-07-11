@@ -11,6 +11,7 @@ import {
   type IMProvider,
   type LegionConfig,
 } from './index.js';
+import { gatewayCommand } from './daemon/index.js';
 
 const CANDIDATE_MODULES = [
   'legion-discord',
@@ -192,6 +193,9 @@ async function main(): Promise<void> {
     case 'agent':
       await agentCommand(process.argv.slice(3));
       break;
+    case 'gateway':
+      await gatewayCommand(process.argv.slice(3), bootstrap);
+      break;
     case undefined:
     case 'run':
       // 向后兼容：无参数或 'run' = 启动 gateway
@@ -199,7 +203,7 @@ async function main(): Promise<void> {
       break;
     default:
       console.log(`Unknown command: ${command}`);
-      console.log('Usage: legion [setup|config|agent|run]');
+      console.log('Usage: legion [setup|config|agent|gateway|run]');
       process.exitCode = 1;
   }
 }

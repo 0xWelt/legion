@@ -125,9 +125,9 @@ describe('legion CLI (shell)', () => {
   });
 
   describe('gateway subcommand dispatch', () => {
-    it('delegates to legion-gateway', () => {
+    it('delegates to gateway command', () => {
       const output = runScript(LEGION_SCRIPT, 'gateway help 2>&1 || true');
-      expect(output).toContain('用法');
+      expect(output).toContain('Usage');
     });
   });
 
@@ -167,7 +167,7 @@ describe('legion-gateway (shell)', () => {
       } catch (err) {
         const stderr = (err as { stderr?: string }).stderr ?? '';
         const stdout = (err as { stdout?: string }).stdout ?? '';
-        expect(`${stdout}${stderr}`).toContain('用法');
+        expect(`${stdout}${stderr}`).toContain('Usage');
       }
     });
   });
@@ -201,24 +201,21 @@ describe('legion-gateway (shell)', () => {
 
     it('shows already-installed message on reinstall', () => {
       const output = runScript(GATEWAY_SCRIPT, 'install');
-      expect(output).toContain('already installed');
+      expect(output).toContain('已安装');
     });
 
-    it('force reinstalls with LEGION_FORCE=1', () => {
-      const output = execSync(`bash -c 'LEGION_FORCE=1 "${GATEWAY_SCRIPT}" install'`, {
-        encoding: 'utf8',
-        cwd: PROJECT_ROOT,
-        env: process.env as Record<string, string>,
-        timeout: 10_000,
-      });
+    it('force reinstalls with --force', () => {
+      const output = runScript(GATEWAY_SCRIPT, 'install --force');
       expect(output).toContain('已安装');
     });
   });
 
   describe('status', () => {
-    it('shows service status (inactive is expected)', () => {
+    it('shows service status as JSON (inactive is expected)', () => {
       const output = runScript(GATEWAY_SCRIPT, 'status');
-      expect(output).toContain('legion-gateway');
+      const status = JSON.parse(output);
+      expect(status.loaded).toBe(true);
+      expect(status.active).toBe('inactive');
     });
   });
 
