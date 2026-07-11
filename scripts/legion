@@ -8,7 +8,7 @@
 #   - setup/config/agent/gateway → node dist/bootstrap.mjs
 #
 # For development (no build needed), use:
-#   pnpm dev             → tsx src/bootstrap.ts (runs gateway)
+#   vp run dev           → tsx src/bootstrap.ts (runs gateway)
 
 set -euo pipefail
 
@@ -45,7 +45,7 @@ Examples:
   legion setup            First-time configuration wizard
 
 For development with hot-reload (no build needed):
-  pnpm dev
+  vp run dev
 EOF
   exit 0
 }

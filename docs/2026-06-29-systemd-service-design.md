@@ -170,7 +170,7 @@ set -euo pipefail
 # Steps:
 # 1. Check prerequisites (node >= 20, pnpm)
 # 2. pnpm install (if node_modules missing)
-# 3. pnpm run build
+# 3. vp run -r build
 # 4. Create ~/.legion/ directory
 # 5. Run interactive config wizard (if config.json missing)
 # 6. Install systemd service (Linux only, optional)
@@ -219,7 +219,7 @@ echo -e "${GREEN}✓${NC} Dependencies ready"
 # ── Step 3: Build ───────────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Building..."
 cd "$PROJECT_DIR"
-pnpm run build
+vp run -r build
 echo -e "${GREEN}✓${NC} Build complete"
 
 # ── Step 4: Create legion home directory ────────────────────────────────
@@ -240,7 +240,7 @@ if command -v systemctl &>/dev/null; then
     echo ""
     read -p "Install systemd service for auto-start? [Y/n] " -r
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        "$SCRIPT_DIR/legion-gateway" install
+        node packages/legion/dist/bootstrap.mjs gateway install
         echo ""
         echo -e "${YELLOW}!${NC} To start now: ${CYAN}legion gateway start${NC}"
         echo -e "${YELLOW}!${NC} To keep running after logout: ${CYAN}sudo loginctl enable-linger \$USER${NC}"
@@ -291,8 +291,7 @@ echo ""
 # Usage: legion <command> [args...]
 #
 # Thin dispatcher — routes to:
-#   - scripts/legion-gateway  (gateway subcommands)
-#   - packages/legion/dist/bootstrap.mjs  (run, setup, config, agent, state)
+#   - packages/legion/dist/bootstrap.mjs  (setup, config, agent, gateway, run)
 
 set -euo pipefail
 
@@ -332,11 +331,7 @@ case "$cmd" in
   --version|-v)
     node -e "console.log(require('$PROJECT_DIR/package.json').version)"
     ;;
-  gateway)
-    shift
-    exec "$SCRIPT_DIR/legion-gateway" "${@:1}"
-    ;;
-  setup|config|agent|state)
+  setup|config|agent|state|gateway)
     exec node "$PROJECT_DIR/packages/legion/dist/bootstrap.mjs" "$@"
     ;;
   *)
@@ -350,16 +345,15 @@ esac
 ### 命令分发
 
 ```text
-legion gateway run         → scripts/legion-gateway run
-legion gateway install     → scripts/legion-gateway install
-legion gateway start       → scripts/legion-gateway start
-legion setup               → node bootstrap.js setup
-legion config show         → node bootstrap.js config show
-legion agent list          → node bootstrap.js agent list
+legion gateway run         → node bootstrap.mjs gateway run
+legion gateway install     → node bootstrap.mjs gateway install
+legion gateway start       → node bootstrap.mjs gateway start
+legion setup               → node bootstrap.mjs setup
+legion config show         → node bootstrap.mjs config show
+legion agent list          → node bootstrap.mjs agent list
 ```
 
-- **gateway 子命令**：由 `scripts/legion-gateway` 处理（systemd 交互逻辑）
-- **其他子命令**：由 `node bootstrap.js` 处理（复用项目代码）
+所有子命令统一由 `node bootstrap.mjs` 处理；`gateway` 子命令在 `bootstrap.ts` 中再分派到 `src/daemon/` 的 TypeScript 服务管理实现。
 
 ---
 
@@ -417,8 +411,7 @@ packages/legion/src/daemon/
 legion/
 ├── scripts/
 │   ├── setup.sh                # 一键安装脚本
-│   ├── legion                  # 主 CLI 入口（dispatch 到 bootstrap.mjs）
-│   └── legion-gateway          # 兼容旧用户的 wrapper，实际调 legion gateway
+│   └── legion                  # 源码安装时的 CLI 入口（dispatch 到 bootstrap.mjs）
 ├── packages/
 │   └── legion/
 │       └── src/
@@ -492,138 +485,16 @@ WantedBy=default.target
 | `ProtectSystem`            | 无                | 无              | `strict`         | 安全加固                     |
 | `ProtectHome`              | 无                | 无              | `read-only`      | 安全加固                     |
 
-### 服务管理脚本
+### 服务管理实现
 
-`scripts/legion-gateway`：
+服务管理已迁移到 TypeScript（`packages/legion/src/daemon/`）。`SystemdServiceManager` 实现了 `ServiceManager` 接口：
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+- `install({ force? })` — 检测已安装状态、生成 unit、daemon-reload、enable
+- `uninstall()` — stop、disable、删除 unit、daemon-reload
+- `start / stop / restart` — systemctl 薄封装
+- `status()` — 解析 `systemctl status` 并返回 JSON
 
-SERVICE_NAME="legion-gateway"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-UNIT_DST="$HOME/.config/systemd/user/$SERVICE_NAME.service"
-DEFAULT_NODE="/usr/bin/node"
-
-cmd="${1:-run}"
-
-find_node() {
-  # Priority: explicitly set > which node > nvm node > system node
-  if [ -n "${LEGION_NODE_BIN:-}" ]; then
-    echo "$LEGION_NODE_BIN"
-    return
-  fi
-  local nvm_node="$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node/" 2>/dev/null | sort -V | tail -1)/bin/node"
-  if [ -x "$nvm_node" ]; then
-    echo "$nvm_node"
-    return
-  fi
-  command -v node || echo "$DEFAULT_NODE"
-}
-
-generate_unit() {
-  local node_bin bootstrap_js
-  node_bin="$(find_node)"
-  bootstrap_js="$PROJECT_DIR/packages/legion/dist/bootstrap.js"
-
-  if [ ! -f "$bootstrap_js" ]; then
-    echo "错误: bootstrap.js 不存在，请先执行 npm run build" >&2
-    echo "  cd $PROJECT_DIR && npm run build" >&2
-    exit 1
-  fi
-
-  cat <<SYSTEMD_UNIT
-[Unit]
-Description=Legion Gateway - Coding Agent IM Bridge
-Documentation=https://github.com/0xWelt/legion
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=60
-
-[Service]
-Type=simple
-ExecStart=${node_bin} ${bootstrap_js} run
-WorkingDirectory=%h/.legion
-Environment="NODE_ENV=production"
-Environment="PATH=${HOME}/.nvm/versions/node/$(ls "${HOME}/.nvm/versions/node/" 2>/dev/null | sort -V | tail -1)/bin:${HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin"
-Restart=always
-RestartSec=5
-RestartPreventExitStatus=78
-TimeoutStopSec=30
-TimeoutStartSec=30
-SuccessExitStatus=0 143
-OOMPolicy=continue
-KillMode=control-group
-KillSignal=SIGTERM
-StandardOutput=journal
-StandardError=journal
-MemoryMax=1G
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.legion
-
-[Install]
-WantedBy=default.target
-SYSTEMD_UNIT
-}
-
-do_install() {
-  mkdir -p "$(dirname "$UNIT_DST")"
-  generate_unit > "$UNIT_DST"
-  systemctl --user daemon-reload
-  systemctl --user enable "$SERVICE_NAME"
-  echo "✓ Legion Gateway systemd 服务已安装"
-  echo ""
-  echo "启动服务:"
-  echo "  systemctl --user start $SERVICE_NAME"
-  echo ""
-  echo "查看日志:"
-  echo "  journalctl --user -u $SERVICE_NAME -f"
-  echo ""
-  echo "用户注销后保持运行:"
-  echo "  sudo loginctl enable-linger \$USER"
-}
-
-do_uninstall() {
-  systemctl --user stop "$SERVICE_NAME" 2>/dev/null || true
-  systemctl --user disable "$SERVICE_NAME" 2>/dev/null || true
-  rm -f "$UNIT_DST"
-  systemctl --user daemon-reload
-  echo "✓ Legion Gateway systemd 服务已卸载"
-}
-
-do_run() {
-  local bootstrap_js="$PROJECT_DIR/packages/legion/dist/bootstrap.js"
-  if [ ! -f "$bootstrap_js" ]; then
-    echo "错误: bootstrap.js 不存在，请先执行 npm run build" >&2
-    exit 1
-  fi
-  echo "启动 Legion Gateway (前台模式)..."
-  echo "按 Ctrl+C 停止"
-  echo ""
-  exec "$(find_node)" "$bootstrap_js" run
-}
-
-case "$cmd" in
-  install)   do_install ;;
-  uninstall) do_uninstall ;;
-  start)     systemctl --user start "$SERVICE_NAME" ;;
-  stop)      systemctl --user stop "$SERVICE_NAME" ;;
-  restart)   systemctl --user restart "$SERVICE_NAME" ;;
-  status)    systemctl --user status "$SERVICE_NAME" ;;
-  run)       do_run ;;
-  *)
-    echo "用法: legion-gateway {install|uninstall|start|stop|restart|status|run}"
-    exit 1
-    ;;
-esac
-```
-
-> Phase 2+ 可改为 TypeScript 实现（参考 OpenClaw），以获得更好的错误处理、`--json` 输出、已安装检测等功能。
+unit 文件由 `buildSystemdUnit()` 程序化生成，参数与上表一致。`ExecStart` 使用运行时解析的 `bootstrap.mjs` 绝对路径，因此源码安装和 npm registry 安装共用同一份代码。
 
 ---
 
@@ -724,7 +595,7 @@ main().catch((err) => {
 | 运行环境            | Python (uv/venv)                  | Node.js (pnpm)               | Node.js (pnpm)                                    |
 | 安装脚本            | `setup-hermes.sh`                 | `scripts/install.sh`（curl） | `scripts/setup.sh`                                |
 | CLI 入口            | `hermes_cli/main.py`（argparse）  | Commander.js（TypeScript）   | `scripts/legion`（bash dispatcher）               |
-| 服务管理实现        | Python (`scripts/hermes-gateway`) | TypeScript (`src/daemon/`)   | Bash (`scripts/legion-gateway`)                   |
+| 服务管理实现        | Python (`scripts/hermes-gateway`) | TypeScript (`src/daemon/`)   | TypeScript (`packages/legion/src/daemon/`)        |
 | systemd unit 生成   | 脚本内字符串拼接                  | 程序化 `buildSystemdUnit()`  | heredoc 模板（当前）                              |
 | 跨平台              | systemd + launchd                 | systemd + launchd + schtasks | systemd（Phase 3+ launchd）                       |
 | `Restart`           | `always`                          | `always`                     | `always`                                          |
@@ -746,12 +617,11 @@ main().catch((err) => {
 
 ### Phase 1：当前 PR（最小可用服务管理）
 
-1. 创建 `scripts/legion-gateway`（服务管理脚本，heredoc 生成 unit）
-2. 创建 `scripts/legion`（主 CLI 入口，bash dispatcher）
-3. 创建 `scripts/setup.sh`（一键安装脚本）
-4. 扩展 `bootstrap.ts` 支持 `setup` / `config show` / `agent list` 子命令
-5. 更新 `package.json` scripts（`dev` → `start:dev`，`start` → production mode）
-6. 本地验证全流程：setup → install → start → status → stop
+1. 在 `packages/legion/src/daemon/` 中实现 TypeScript 服务管理层（`service.ts` / `systemd.ts` / `unit.ts` / `paths.ts` / `index.ts`）
+2. 扩展 `bootstrap.ts` 支持 `setup` / `config show` / `agent list` / `gateway` 子命令
+3. 创建 `scripts/legion`（源码安装时的 bash dispatcher）
+4. 创建 `scripts/setup.sh`（一键安装脚本）
+5. 本地验证全流程：setup → install → start → status → stop
 
 ### Phase 2：graceful shutdown + 健壮性（后续）
 
@@ -775,13 +645,10 @@ process.on('SIGTERM', async () => {
 - `--force` 支持（强制重装）
 - 注册 `RestartPreventExitStatus=78` 对应的优雅停止 exit code
 
-### Phase 3：TypeScript 服务管理层（后续）
+### Phase 3：跨平台服务管理层扩展（后续）
 
-参考 OpenClaw，将 `scripts/legion-gateway` 重写为 TypeScript：
+当前已实现 Linux systemd 的 TypeScript 服务管理。后续可参考 OpenClaw 扩展：
 
-- `src/daemon/service.ts` — `GatewayService` 多态接口
-- `src/daemon/systemd.ts` — systemd 实现
-- `src/daemon/systemd-unit.ts` — `buildSystemdUnit()` 程序化生成
 - `src/daemon/launchd.ts` — macOS 支持
 - CLI 输出 `--json` 选项（脚本友好）
 - Version drift 检测

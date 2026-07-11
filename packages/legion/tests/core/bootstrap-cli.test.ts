@@ -9,7 +9,6 @@ const PROJECT_ROOT = resolve(import.meta.dirname!, '..', '..', '..', '..');
 const BOOTSTRAP_MJS = join(PROJECT_ROOT, 'packages', 'legion', 'dist', 'bootstrap.mjs');
 const SCRIPTS_DIR = join(PROJECT_ROOT, 'scripts');
 const LEGION_SCRIPT = join(SCRIPTS_DIR, 'legion');
-const GATEWAY_SCRIPT = join(SCRIPTS_DIR, 'legion-gateway');
 const SETUP_SCRIPT = join(SCRIPTS_DIR, 'setup.sh');
 
 function run(args: string, opts?: { cwd?: string; env?: Record<string, string> }): string {
@@ -157,13 +156,13 @@ describe('legion CLI (shell)', () => {
   });
 });
 
-describe('legion-gateway (shell)', () => {
+describe('legion gateway (shell)', () => {
   const UNIT_PATH = join(homedir(), '.config', 'systemd', 'user', 'legion-gateway.service');
 
   describe('help / error handling', () => {
     it('shows usage for invalid subcommand', () => {
       try {
-        runScript(GATEWAY_SCRIPT, 'help');
+        run(`${BOOTSTRAP_MJS} gateway help`);
       } catch (err) {
         const stderr = (err as { stderr?: string }).stderr ?? '';
         const stdout = (err as { stdout?: string }).stdout ?? '';
@@ -181,7 +180,7 @@ describe('legion-gateway (shell)', () => {
         /* ok */
       }
 
-      const output = runScript(GATEWAY_SCRIPT, 'install');
+      const output = run(`${BOOTSTRAP_MJS} gateway install`);
       expect(output).toContain('已安装');
 
       expect(existsSync(UNIT_PATH)).toBe(true);
@@ -200,19 +199,19 @@ describe('legion-gateway (shell)', () => {
     });
 
     it('shows already-installed message on reinstall', () => {
-      const output = runScript(GATEWAY_SCRIPT, 'install');
+      const output = run(`${BOOTSTRAP_MJS} gateway install`);
       expect(output).toContain('已安装');
     });
 
     it('force reinstalls with --force', () => {
-      const output = runScript(GATEWAY_SCRIPT, 'install --force');
+      const output = run(`${BOOTSTRAP_MJS} gateway install --force`);
       expect(output).toContain('已安装');
     });
   });
 
   describe('status', () => {
     it('shows service status as JSON (inactive is expected)', () => {
-      const output = runScript(GATEWAY_SCRIPT, 'status');
+      const output = run(`${BOOTSTRAP_MJS} gateway status`);
       const status = JSON.parse(output);
       expect(status.loaded).toBe(true);
       expect(status.active).toBe('inactive');
@@ -221,7 +220,7 @@ describe('legion-gateway (shell)', () => {
 
   describe('uninstall', () => {
     it('removes unit file and cleans up', () => {
-      const output = runScript(GATEWAY_SCRIPT, 'uninstall');
+      const output = run(`${BOOTSTRAP_MJS} gateway uninstall`);
       expect(output).toContain('已卸载');
       expect(existsSync(UNIT_PATH)).toBe(false);
     });
@@ -234,7 +233,7 @@ describe('setup.sh', () => {
     expect(content).toContain('#!/usr/bin/env bash');
     expect(content).toContain('Prerequisites');
     expect(content).toContain('pnpm install');
-    expect(content).toContain('pnpm run build');
+    expect(content).toContain('vp run -r build');
     expect(content).toContain('bootstrap.mjs');
   });
 });

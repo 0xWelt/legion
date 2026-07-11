@@ -11,7 +11,7 @@
 # Steps:
 # 1. Check prerequisites (node >= 20, pnpm)
 # 2. pnpm install (if node_modules missing)
-# 3. pnpm run build
+# 3. vp run -r build
 # 4. Create ~/.legion/ directory
 # 5. Run interactive config wizard (if config.json missing)
 # 6. Install systemd service (Linux only, optional)
@@ -65,7 +65,7 @@ echo -e "${GREEN}✓${NC} Dependencies ready"
 
 # ── Step 3: Build ───────────────────────────────────────────────────────
 echo -e "${CYAN}→${NC} Building..."
-pnpm run build
+vp run -r build
 echo -e "${GREEN}✓${NC} Build complete"
 
 # ── Step 4: Create legion home dir ──────────────────────────────────────
@@ -115,5 +115,5 @@ echo "  legion gateway status                       # Check service status"
 echo "  journalctl --user -u legion-gateway -f       # View logs"
 echo ""
 echo "For development (TypeScript, no build):"
-echo "  pnpm dev"
+echo "  vp run dev"
 echo ""
