@@ -16,7 +16,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "*"
+    "legion-api": "workspace:*"
+  },
+  "devDependencies": {
+    "legion-discord": "workspace:*",
+    "legion-lark": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

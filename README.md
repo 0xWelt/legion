@@ -39,7 +39,7 @@ Agent 层和 IM 层相互独立：接入新的 agent 或新的 IM 平台，都�
 ### 前提
 
 - Node.js >= 20
-- npm
+- pnpm（由根目录 `package.json` 的 `packageManager` 字段锁定版本）
 - 至少一个已安装并可运行的 coding agent CLI：
   - [Kimi Code CLI](https://github.com/MoonshotAI/kimi-code)（命令行输入 `kimi` 可用）
   - [Claude Code CLI](https://code.claude.com/)（命令行输入 `claude` 可用）
@@ -69,13 +69,13 @@ Agent 层和 IM 层相互独立：接入新的 agent 或新的 IM 平台，都�
 ```bash
 git clone <仓库地址>
 cd legion
-npm install
+pnpm install
 ```
 
 ### 2. 启动 Legion
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 首次启动会交互式询问 Discord bot token 和 allowed guild id，并写入 `~/.legion/config.json`。后续启动直接读取该文件，不再询问。
@@ -85,7 +85,7 @@ npm run dev
 ```bash
 export LEGION_DISCORD_BOT_TOKEN="your-bot-token"
 export LEGION_DISCORD_ALLOWED_GUILD_ID="your-guild-id"
-npm run dev
+pnpm dev
 ```
 
 ### 3. 绑定工作目录
@@ -174,7 +174,7 @@ Legion 默认以各 runner 能达到的最高自动权限运行，不需要在�
 项目已迁移到 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口：
 
 ```bash
-vp dev             # 开发运行（相当于 npm run dev）
+vp dev             # 开发运行（相当于 pnpm dev）
 vp run -r build    # 构建所有 workspace 包
 vp check           # 格式化 + lint + 类型检查
 vp test            # 运行测试
