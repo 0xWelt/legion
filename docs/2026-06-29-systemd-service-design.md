@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 Legion 只有开发/调试模式（`pnpm dev` → `tsx` 直接执行源码），没有正式的生产运行方式。需要设计：
+当前 Legion 只有开发/调试模式（`vp run dev` → `tsx` 直接执行源码），没有正式的生产运行方式。需要设计：
 
 1. **正式安装方式**：用户如何获得和安装 Legion
 2. **CLI 工具**：统一的命令行入口，覆盖配置、运行、服务管理
@@ -138,16 +138,16 @@ legion
 
 ### 当前阶段实现优先级
 
-| 优先级 | 命令                                       | 说明                                 |
-| ------ | ------------------------------------------ | ------------------------------------ |
-| P0     | `legion gateway run`                       | 前台运行（等同于当前 `npm run dev`） |
-| P0     | `legion gateway install/start/stop/status` | systemd 服务管理                     |
-| P0     | `legion setup`                             | 首次配置向导                         |
-| P1     | `legion config show`                       | 查看配置                             |
-| P1     | `legion agent list`                        | 列出 agent                           |
-| P2     | `legion config set`                        | 修改配置                             |
-| P2     | `legion gateway install --force`           | 强制重装                             |
-| P2     | `legion gateway restart`                   | 重启（当前 systemctl restart 即可）  |
+| 优先级 | 命令                                       | 说明                                |
+| ------ | ------------------------------------------ | ----------------------------------- |
+| P0     | `legion gateway run`                       | 前台运行（等同于当前 `vp run dev`） |
+| P0     | `legion gateway install/start/stop/status` | systemd 服务管理                    |
+| P0     | `legion setup`                             | 首次配置向导                        |
+| P1     | `legion config show`                       | 查看配置                            |
+| P1     | `legion agent list`                        | 列出 agent                          |
+| P2     | `legion config set`                        | 修改配置                            |
+| P2     | `legion gateway install --force`           | 强制重装                            |
+| P2     | `legion gateway restart`                   | 重启（当前 systemctl restart 即可） |
 
 ---
 

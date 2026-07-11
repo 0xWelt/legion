@@ -80,7 +80,7 @@
 - **Lint**：`vp lint` / `vp lint --fix`（Oxlint，替代 ESLint + typescript-eslint）。
 - **类型检查**：`vp check` 会自动运行类型检查（tsgo）；不再使用 `tsc --noEmit`。
 - **测试**：`vp test`（Vitest，配置在根 `vite.config.ts` 的 `test` 字段）。
-- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`；根 `pnpm run build` 实际为 `vp run -r build`）。
+- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`）；根构建入口为 `vp run -r build`。
 - **Git Hooks**：由 `vp config` / `prepare` 自动安装，配置在根 `vite.config.ts` 的 `staged` 字段；不再使用 lefthook。
 
 因此：

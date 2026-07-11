@@ -40,7 +40,6 @@ export default defineConfig({
     },
   },
   staged: {
-    '*.{ts,mjs,json,md,yml,yaml}': ['vp fmt --write'],
-    '*.{ts,mjs}': ['vp lint --fix'],
+    '*.{ts,mjs,json,md,yml,yaml}': ['vp check --fix'],
   },
 });

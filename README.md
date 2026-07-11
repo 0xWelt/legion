@@ -75,7 +75,7 @@ pnpm install
 ### 2. 启动 Legion
 
 ```bash
-pnpm dev
+vp run dev
 ```
 
 首次启动会交互式询问 Discord bot token 和 allowed guild id，并写入 `~/.legion/config.json`。后续启动直接读取该文件，不再询问。
@@ -85,7 +85,7 @@ pnpm dev
 ```bash
 export LEGION_DISCORD_BOT_TOKEN="your-bot-token"
 export LEGION_DISCORD_ALLOWED_GUILD_ID="your-guild-id"
-pnpm dev
+vp run dev
 ```
 
 ### 3. 绑定工作目录
@@ -174,7 +174,7 @@ Legion 默认以各 runner 能达到的最高自动权限运行，不需要在�
 项目已迁移到 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口：
 
 ```bash
-vp dev             # 开发运行（相当于 pnpm dev）
+vp run dev         # 开发运行
 vp run -r build    # 构建所有 workspace 包
 vp check           # 格式化 + lint + 类型检查
 vp test            # 运行测试
