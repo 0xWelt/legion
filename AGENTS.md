@@ -53,13 +53,14 @@
 
 ## 5. 工具链与命令入口
 
-项目已统一使用 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口。
+项目统一使用 [pnpm](https://pnpm.io/) 作为包管理器，并使用 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口。
 
+- **包管理**：所有依赖安装/脚本运行统一走 `pnpm`。workspace 内部包依赖使用 `workspace:*` 协议，不再使用 npm 的 `*` 隐式 workspace 版本。
 - **格式化**：`vp fmt` / `vp fmt --write`（Oxfmt，替代 Prettier）。
 - **Lint**：`vp lint` / `vp lint --fix`（Oxlint，替代 ESLint + typescript-eslint）。
 - **类型检查**：`vp check` 会自动运行类型检查（tsgo）；不再使用 `tsc --noEmit`。
 - **测试**：`vp test`（Vitest，配置在根 `vite.config.ts` 的 `test` 字段）。
-- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`；根 `npm run build` 实际为 `vp run -r build`）。
+- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`；根 `pnpm run build` 实际为 `vp run -r build`）。
 - **Git Hooks**：由 `vp config` / `prepare` 自动安装，配置在根 `vite.config.ts` 的 `staged` 字段；不再使用 lefthook。
 
 因此：

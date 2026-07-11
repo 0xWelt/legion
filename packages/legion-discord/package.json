@@ -18,7 +18,7 @@
   "dependencies": {
     "discord-api-types": "^0.38.49",
     "discord.js": "^14.26.4",
-    "legion-api": "*"
+    "legion-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

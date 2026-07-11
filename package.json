@@ -12,9 +12,6 @@
   ],
   "license": "MIT",
   "author": "",
-  "workspaces": [
-    "packages/*"
-  ],
   "type": "module",
   "scripts": {
     "build": "vp run -r build",
@@ -29,8 +26,15 @@
     "vite-plus": "^0.2.4",
     "vitest": "^4.0.0"
   },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.11.0",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": ">=20.20.2"
   },
-  "packageManager": "npm@11.7.0"
+  "packageManager": "pnpm@11.11.0"
 }

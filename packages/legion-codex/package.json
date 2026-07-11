@@ -17,10 +17,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "*"
+    "legion-api": "workspace:*"
   },
   "devDependencies": {
-    "legion": "*"
+    "legion": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"
