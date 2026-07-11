@@ -31,12 +31,5 @@
   },
   "engines": {
     "node": ">=20.20.2"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "npm",
-      "version": "12.0.1",
-      "onFail": "download"
-    }
   }
 }
