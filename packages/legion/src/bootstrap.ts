@@ -13,9 +13,17 @@ import {
   type IMCommandDefinition,
   type IMProvider,
   type LegionConfig,
+  type ServiceManager,
 } from './index.js';
-import { gatewayCommand } from './daemon/index.js';
+import { gatewayCommand, detectServiceManager } from './daemon/index.js';
 import { MultiIMProvider } from './im/multi-provider.js';
+import {
+  createWebUIProvider,
+  resolveWebUIAssetRoot,
+  webuiConfigContribution,
+  type WebUIConfig,
+  type WebUIProvider,
+} from './webui/index.js';
 import * as legionDiscord from '@0xwelt/legion-discord';
 import * as legionLark from '@0xwelt/legion-lark';
 import * as legionKimiCode from '@0xwelt/legion-kimi-code';
@@ -52,7 +60,7 @@ async function loadContributions(): Promise<{
   configContributions: ConfigContribution[];
   agentContributions: AgentContribution[];
 }> {
-  const configContributions: ConfigContribution[] = [];
+  const configContributions: ConfigContribution[] = [webuiConfigContribution];
   const agentContributions: AgentContribution[] = [];
 
   for (const mod of CANDIDATE_MODULES) {
@@ -69,22 +77,50 @@ async function loadContributions(): Promise<{
 
 async function createIMProviders(
   config: LegionConfig,
-  contributions: ConfigContribution[]
+  contributions: ConfigContribution[],
+  serviceManager?: ServiceManager,
+  stateStorePath?: string,
+  configPath?: string
 ): Promise<IMProvider[]> {
-  const providers: IMProvider[] = [];
+  const providers: IMProvider[] = [
+    createWebUIProviderWithDeps(
+      (config as unknown as Record<string, unknown>).webui as WebUIConfig | undefined,
+      serviceManager,
+      stateStorePath,
+      configPath
+    ),
+  ];
 
   for (const contribution of contributions) {
+    if (contribution.key === 'webui') continue;
     const raw = (config as unknown as Record<string, unknown>)[contribution.key];
     if (raw !== undefined) {
       providers.push(await contribution.createProvider(raw));
     }
   }
 
-  if (providers.length === 0) {
-    throw new Error('未配置 IM 平台（discord 或 lark）');
-  }
-
   return providers;
+}
+
+function createWebUIProviderWithDeps(
+  config: WebUIConfig | undefined,
+  serviceManager?: ServiceManager,
+  stateStorePath?: string,
+  configPath?: string
+): WebUIProvider {
+  const staticRoot = resolveWebUIAssetRoot();
+  if (staticRoot) {
+    console.log(`Serving Web UI assets from ${staticRoot}`);
+  } else {
+    console.log('Web UI assets not found; API and WebSocket still available.');
+  }
+  return createWebUIProvider({
+    config: config ?? {},
+    serviceManager,
+    stateStorePath,
+    configPath,
+    staticRoot: staticRoot ?? undefined,
+  });
 }
 
 export async function bootstrap(): Promise<void> {
@@ -110,7 +146,14 @@ export async function bootstrap(): Promise<void> {
   }
 
   const stateStore = new JsonStateStore({ path: config.stateStore.path });
-  const providers = await createIMProviders(config, configContributions);
+  const serviceManager = detectServiceManager();
+  const providers = await createIMProviders(
+    config,
+    configContributions,
+    serviceManager,
+    config.stateStore.path,
+    DEFAULT_CONFIG_PATH
+  );
   const imProvider = new MultiIMProvider(providers);
 
   imProvider.registerCommands?.(buildCommandDefinitions(runnerFactory.list()));
