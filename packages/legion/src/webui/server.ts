@@ -2,8 +2,12 @@ import { createServer, type IncomingMessage, type Server as HttpServer } from 'n
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { homedir } from 'node:os';
+import { createRequire } from 'node:module';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json') as { version: string };
 
 export interface ClientMessagePayload {
   channelId: string;
@@ -85,6 +89,7 @@ export interface ServerOptions {
   authToken?: string;
   serviceManager?: ServiceManager;
   stateStorePath?: string;
+  configPath?: string;
   loadConfig?: () => Promise<unknown>;
   saveConfig?: (config: Record<string, unknown>) => Promise<void>;
 }
@@ -153,13 +158,15 @@ export class WebUIServer {
       if (req.method === 'GET' && url.pathname === '/api/config') {
         const config = await this.readConfig();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(config));
+        res.end(JSON.stringify({ config, configPath: this.options.configPath }));
         return;
       }
 
       if (req.method === 'POST' && url.pathname === '/api/config') {
         const body = await parseJsonBody(req);
-        await this.writeConfig(body as Record<string, unknown>);
+        const payload = body as Record<string, unknown>;
+        const { __configPath, ...config } = payload;
+        await this.writeConfig(config);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
         return;
@@ -266,10 +273,21 @@ export class WebUIServer {
   }
 
   private async getServiceStatus(): Promise<ServiceStatus> {
+    const mode = import.meta.url.includes('/node_modules/')
+      ? 'npm'
+      : import.meta.url.includes('/src/')
+        ? 'dev'
+        : 'unknown';
+    const base: ServiceStatus = {
+      version: pkg.version,
+      mode,
+      loaded: false,
+    };
     if (!this.options.serviceManager) {
-      return { loaded: false };
+      return base;
     }
-    return this.options.serviceManager.status();
+    const status = await this.options.serviceManager.status();
+    return { ...base, ...status };
   }
 
   private async handleServiceAction(action: string): Promise<void> {

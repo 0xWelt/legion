@@ -96,6 +96,8 @@ export class SystemdServiceManager implements ServiceManager {
         encoding: 'utf8',
       });
       return {
+        serviceName: this.name,
+        unitPath: this.unitPath,
         loaded: output.includes('Loaded: loaded'),
         active: parseActiveState(output),
         enabled: /Enabled;/i.test(output),
@@ -103,6 +105,8 @@ export class SystemdServiceManager implements ServiceManager {
     } catch (err) {
       const output = (err as { stdout?: string }).stdout ?? '';
       return {
+        serviceName: this.name,
+        unitPath: this.unitPath,
         loaded: output.includes('Loaded: loaded'),
         active: parseActiveState(output),
         enabled: /Enabled;/i.test(output),

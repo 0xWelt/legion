@@ -1,5 +1,5 @@
 import type { ServiceManager } from '@0xwelt/legion-api';
-import { loadConfig } from '../config/loader.js';
+import { loadConfig, saveConfig } from '../config/loader.js';
 import { webuiConfigContribution } from './contribution.js';
 import { WebUIProvider } from './provider.js';
 import { WebUIServer } from './server.js';
@@ -18,9 +18,16 @@ export function createWebUIProvider(options: CreateWebUIProviderOptions): WebUIP
     authToken: options.config.authToken,
     serviceManager: options.serviceManager,
     stateStorePath: options.stateStorePath,
-    loadConfig: async () => loadConfig([webuiConfigContribution], undefined, { skipPrompt: true }),
-    saveConfig: async (_config) => {
-      // TODO: implement config save
+    configPath: options.configPath,
+    loadConfig: async () =>
+      loadConfig([webuiConfigContribution], options.configPath, { skipPrompt: true }),
+    saveConfig: async (config) => {
+      if (!options.configPath) return;
+      const existing = await loadConfig([webuiConfigContribution], options.configPath, {
+        skipPrompt: true,
+      });
+      const merged = { ...existing, ...config };
+      await saveConfig(options.configPath, merged);
     },
   });
   return new WebUIProvider(options.config, server, options.staticRoot);

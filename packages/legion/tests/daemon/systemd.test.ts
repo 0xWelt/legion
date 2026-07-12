@@ -47,11 +47,14 @@ describe('SystemdServiceManager.status', () => {
     );
 
     const manager = new SystemdServiceManager();
-    await expect(manager.status()).resolves.toEqual({
-      loaded: true,
-      active: 'active',
-      enabled: true,
-    });
+    await expect(manager.status()).resolves.toEqual(
+      expect.objectContaining({
+        loaded: true,
+        active: 'active',
+        enabled: true,
+        serviceName: manager.name,
+      })
+    );
   });
 
   it('parses inactive state', async () => {
@@ -66,10 +69,13 @@ describe('SystemdServiceManager.status', () => {
     });
 
     const manager = new SystemdServiceManager();
-    await expect(manager.status()).resolves.toEqual({
-      loaded: true,
-      active: 'inactive',
-      enabled: false,
-    });
+    await expect(manager.status()).resolves.toEqual(
+      expect.objectContaining({
+        loaded: true,
+        active: 'inactive',
+        enabled: false,
+        serviceName: manager.name,
+      })
+    );
   });
 });
