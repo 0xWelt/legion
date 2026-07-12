@@ -112,6 +112,10 @@ legion-webui (frontend only)
   - Vite dev server 默认 port 5173，并通过 proxy 把 `/api` 与 `/ws` 转发到后端 `127.0.0.1:18788`。
 - 组合命令：`vp run dev:webui` 用 `concurrently` 同时跑前后端。
 
+> **注意**：开发时浏览器必须访问 `http://127.0.0.1:5173`。`http://127.0.0.1:18788` 由后端提供已构建的 `dist/frontend` 静态产物，不会随源码变更自动更新。
+>
+> 实测：修改 `Sidebar.vue` 中的品牌文字后，约 2.5 秒页面无需刷新即显示新内容，HMR 工作正常。
+
 ## 功能需求
 
 ### 1. 多窗口聊天页面
