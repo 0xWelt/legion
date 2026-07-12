@@ -15,6 +15,7 @@ import {
   type LegionConfig,
 } from './index.js';
 import { gatewayCommand } from './daemon/index.js';
+import { MultiIMProvider } from './im/multi-provider.js';
 import * as legionDiscord from '@0xwelt/legion-discord';
 import * as legionLark from '@0xwelt/legion-lark';
 import * as legionKimiCode from '@0xwelt/legion-kimi-code';
@@ -66,17 +67,24 @@ async function loadContributions(): Promise<{
   return { configContributions, agentContributions };
 }
 
-async function createIMProvider(
+async function createIMProviders(
   config: LegionConfig,
   contributions: ConfigContribution[]
-): Promise<IMProvider> {
+): Promise<IMProvider[]> {
+  const providers: IMProvider[] = [];
+
   for (const contribution of contributions) {
     const raw = (config as unknown as Record<string, unknown>)[contribution.key];
     if (raw !== undefined) {
-      return contribution.createProvider(raw);
+      providers.push(await contribution.createProvider(raw));
     }
   }
-  throw new Error('未配置 IM 平台（discord 或 lark）');
+
+  if (providers.length === 0) {
+    throw new Error('未配置 IM 平台（discord 或 lark）');
+  }
+
+  return providers;
 }
 
 export async function bootstrap(): Promise<void> {
@@ -102,7 +110,8 @@ export async function bootstrap(): Promise<void> {
   }
 
   const stateStore = new JsonStateStore({ path: config.stateStore.path });
-  const imProvider = await createIMProvider(config, configContributions);
+  const providers = await createIMProviders(config, configContributions);
+  const imProvider = new MultiIMProvider(providers);
 
   imProvider.registerCommands?.(buildCommandDefinitions(runnerFactory.list()));
 
@@ -208,7 +217,7 @@ async function isMainEntry(): Promise<boolean> {
   return import.meta.url === argvUrl;
 }
 
-isMainEntry().then((isMain) => {
+void isMainEntry().then((isMain) => {
   if (isMain) {
     main().catch((err) => {
       console.error(err);
