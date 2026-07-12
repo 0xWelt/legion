@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { realpath } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import {
   loadConfig,
   LegionCore,
@@ -199,9 +201,18 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+async function isMainEntry(): Promise<boolean> {
+  const argvPath = process.argv[1];
+  if (!argvPath) return false;
+  const argvUrl = pathToFileURL(await realpath(argvPath)).href;
+  return import.meta.url === argvUrl;
 }
+
+isMainEntry().then((isMain) => {
+  if (isMain) {
+    main().catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+  }
+});
