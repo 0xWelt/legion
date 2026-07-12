@@ -18,7 +18,8 @@
     "changeset": "changeset",
     "dev": "tsx watch packages/legion/src/bootstrap.ts",
     "prepare": "vp config",
-    "publish-packages": "vp run -r build && vp exec changeset publish",
+    "publish-packages": "vp run -r build && cd packages/legion && npm publish --dry-run && cd ../.. && vp exec changeset publish",
+    "smoke": "bash packages/legion/scripts/publish-smoke-test.sh",
     "start": "node packages/legion/dist/bootstrap.mjs",
     "version-packages": "changeset version"
   },
