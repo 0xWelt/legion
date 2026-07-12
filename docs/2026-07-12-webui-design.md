@@ -57,6 +57,7 @@ Legion 目前通过 Discord、Lark 等 IM provider 与用户交互。为了降�
 - `legion gateway run`（以及 `legion run`）启动后，内置的 Web UI HTTP server 自动监听 `127.0.0.1:18788`。
 - 浏览器访问同一地址即可得到聊天页面、状态页面和设置页面。
 - 无需用户单独配置或启动 Web UI 服务。
+- Web UI 通过 `MultiIMProvider` 与外部 IM（Discord/Lark 等）同时运行：它始终作为一个 IM provider 存在，消息和回复按 thread/message 路由回对应的 provider。
 
 ### 2. 包职责划分
 
@@ -208,7 +209,6 @@ vp test
 
 ## 未决问题
 
-- 当前为单 IMProvider 架构：未配置外部 IM 时 Web UI 为默认 provider；配置了 Discord/Lark 时外部 provider 优先。未来若要「Web UI 始终作为独立 provider 与外部 IM 并存」，需改为多 provider 架构。
 - `/api/config` 的 `POST` 保存逻辑尚未实现（当前为 TODO）。
 
 ---
