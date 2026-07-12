@@ -231,23 +231,22 @@ importers:
 
   packages/legion:
     dependencies:
-      legion-api:
+      '@0xwelt/legion-api':
         specifier: workspace:*
         version: link:../legion-api
-    devDependencies:
-      legion-claude-code:
+      '@0xwelt/legion-claude-code':
         specifier: workspace:*
         version: link:../legion-claude-code
-      legion-codex:
+      '@0xwelt/legion-codex':
         specifier: workspace:*
         version: link:../legion-codex
-      legion-discord:
+      '@0xwelt/legion-discord':
         specifier: workspace:*
         version: link:../legion-discord
-      legion-kimi-code:
+      '@0xwelt/legion-kimi-code':
         specifier: workspace:*
         version: link:../legion-kimi-code
-      legion-lark:
+      '@0xwelt/legion-lark':
         specifier: workspace:*
         version: link:../legion-lark
 
@@ -255,42 +254,42 @@ importers:
 
   packages/legion-claude-code:
     dependencies:
-      legion-api:
+      '@0xwelt/legion-api':
         specifier: workspace:*
         version: link:../legion-api
 
   packages/legion-codex:
     dependencies:
-      legion-api:
+      '@0xwelt/legion-api':
         specifier: workspace:*
         version: link:../legion-api
 
   packages/legion-discord:
     dependencies:
+      '@0xwelt/legion-api':
+        specifier: workspace:*
+        version: link:../legion-api
       discord-api-types:
         specifier: ^0.38.49
         version: 0.38.49
       discord.js:
         specifier: ^14.26.4
         version: 14.26.5
-      legion-api:
-        specifier: workspace:*
-        version: link:../legion-api
 
   packages/legion-kimi-code:
     dependencies:
-      legion-api:
+      '@0xwelt/legion-api':
         specifier: workspace:*
         version: link:../legion-api
 
   packages/legion-lark:
     dependencies:
+      '@0xwelt/legion-api':
+        specifier: workspace:*
+        version: link:../legion-api
       '@larksuiteoapi/node-sdk':
         specifier: ^1.66.1
         version: 1.70.0
-      legion-api:
-        specifier: workspace:*
-        version: link:../legion-api
 
 packages:
 

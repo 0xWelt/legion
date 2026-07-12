@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DefaultAgentRunnerFactory } from 'legion-api';
+import { DefaultAgentRunnerFactory } from '@0xwelt/legion-api';
 import type { AgentRunner } from '../../src/agent/types.js';
 import type { LegionConfig } from '../../src/config/schema.js';
 import { LegionCore } from '../../src/core/legion-core.js';

@@ -39,7 +39,6 @@ Agent 层和 IM 层相互独立：接入新的 agent 或新的 IM 平台，都�
 ### 前提
 
 - Node.js >= 20
-- pnpm（由根目录 `package.json` 的 `packageManager` 字段锁定版本）
 - 至少一个已安装并可运行的 coding agent CLI：
   - [Kimi Code CLI](https://github.com/MoonshotAI/kimi-code)（命令行输入 `kimi` 可用）
   - [Claude Code CLI](https://code.claude.com/)（命令行输入 `claude` 可用）
@@ -64,23 +63,49 @@ Agent 层和 IM 层相互独立：接入新的 agent 或新的 IM 平台，都�
    - 进入 **用户设置 > 高级 > 开发者模式**，开启它。
    - 右键你的 Server 名称，选择 **复制服务器 ID**（即 `LEGION_DISCORD_ALLOWED_GUILD_ID`）。
 
-### 1. 安装
+### 方式一：一键脚本安装（推荐，正式使用）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xWelt/legion/main/scripts/install.sh | bash
+```
+
+该脚本会检查 Node.js、安装 `@0xwelt/legion`、运行配置向导，并询问是否安装 systemd 用户服务。
+
+非交互式安装（CI/自动化）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xWelt/legion/main/scripts/install.sh | LEGION_NO_PROMPT=1 bash
+```
+
+### 方式二：通过 npm 安装
+
+如果你已经确认环境满足要求，也可以直接：
+
+```bash
+npm install -g @0xwelt/legion
+legion setup
+legion gateway run
+```
+
+首次 `legion setup` 会交互式询问 Discord bot token 和 allowed guild id，并写入 `~/.legion/config.json`。后续启动直接读取该文件，不再询问。
+
+也可以把 gateway 注册为 systemd 用户服务，实现开机自启：
+
+```bash
+legion gateway install
+legion gateway start
+```
+
+### 方式三：从源码运行（开发调试）
 
 ```bash
 git clone <仓库地址>
 cd legion
 vp install
-```
-
-### 2. 启动 Legion
-
-```bash
 vp run dev
 ```
 
-首次启动会交互式询问 Discord bot token 和 allowed guild id，并写入 `~/.legion/config.json`。后续启动直接读取该文件，不再询问。
-
-你也可以通过环境变量预填，跳过交互：
+首次启动会交互式询问配置。你也可以通过环境变量预填，跳过交互：
 
 ```bash
 export LEGION_DISCORD_BOT_TOKEN="your-bot-token"

@@ -1,4 +1,4 @@
-export { COMMAND_DEFINITIONS } from 'legion-api';
+export { COMMAND_DEFINITIONS } from '@0xwelt/legion-api';
 
 export type AgentScope = 'global' | 'workdir' | 'session';
 

@@ -1,4 +1,4 @@
-import { DefaultAgentRunnerFactory } from 'legion-api';
+import { DefaultAgentRunnerFactory } from '@0xwelt/legion-api';
 import { describe, expect, it } from 'vitest';
 import { kimiCodeAgentContribution, KimiCodeRunner } from '../src/index.js';
 

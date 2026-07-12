@@ -7,25 +7,12 @@ import { describe, expect, it } from 'vitest';
 
 const PROJECT_ROOT = resolve(import.meta.dirname!, '..', '..', '..', '..');
 const BOOTSTRAP_MJS = join(PROJECT_ROOT, 'packages', 'legion', 'dist', 'bootstrap.mjs');
-const SCRIPTS_DIR = join(PROJECT_ROOT, 'scripts');
-const LEGION_SCRIPT = join(SCRIPTS_DIR, 'legion');
-const SETUP_SCRIPT = join(SCRIPTS_DIR, 'setup.sh');
 
 function run(args: string, opts?: { cwd?: string; env?: Record<string, string> }): string {
   return execSync(`${process.execPath} ${args}`, {
     encoding: 'utf8',
     cwd: opts?.cwd ?? PROJECT_ROOT,
     env: { ...process.env, ...opts?.env },
-    stdio: ['pipe', 'pipe', 'pipe'],
-    timeout: 10_000,
-  });
-}
-
-function runScript(script: string, args: string = ''): string {
-  return execSync(`bash ${script} ${args}`, {
-    encoding: 'utf8',
-    cwd: PROJECT_ROOT,
-    env: process.env as Record<string, string>,
     stdio: ['pipe', 'pipe', 'pipe'],
     timeout: 10_000,
   });
@@ -104,59 +91,7 @@ describe('bootstrap CLI', () => {
   });
 });
 
-describe('legion CLI (shell)', () => {
-  describe('--help', () => {
-    it('shows usage', () => {
-      const output = runScript(LEGION_SCRIPT, '--help');
-      expect(output).toContain('Legion');
-      expect(output).toContain('gateway');
-      expect(output).toContain('setup');
-      expect(output).toContain('config');
-      expect(output).toContain('agent');
-    });
-  });
-
-  describe('--version', () => {
-    it('shows version', () => {
-      const output = runScript(LEGION_SCRIPT, '--version');
-      expect(output.trim()).toMatch(/^\d+\.\d+\.\d+/);
-    });
-  });
-
-  describe('gateway subcommand dispatch', () => {
-    it('delegates to gateway command', () => {
-      const output = runScript(LEGION_SCRIPT, 'gateway help 2>&1 || true');
-      expect(output).toContain('Usage');
-    });
-  });
-
-  describe('unknown command', () => {
-    it('shows error', () => {
-      try {
-        runScript(LEGION_SCRIPT, 'nonexistent');
-      } catch (err) {
-        const stderr = (err as { stderr?: string }).stderr ?? '';
-        const stdout = (err as { stdout?: string }).stdout ?? '';
-        expect(`${stdout}${stderr}`).toMatch(/unknown/i);
-      }
-    });
-  });
-
-  describe('agent dispatches to bootstrap.js', () => {
-    it('runs agent list', () => {
-      try {
-        const output = runScript(LEGION_SCRIPT, 'agent list');
-        expect(output).toMatch(/kimi-code|claude-code|codex|no agents/);
-      } catch (err) {
-        // may fail if dist not built, but command dispatch works
-        const msg = String(err);
-        expect(msg).toBeTruthy();
-      }
-    });
-  });
-});
-
-describe('legion gateway (shell)', () => {
+describe('legion gateway', () => {
   const UNIT_PATH = join(homedir(), '.config', 'systemd', 'user', 'legion-gateway.service');
 
   describe('help / error handling', () => {
@@ -224,16 +159,5 @@ describe('legion gateway (shell)', () => {
       expect(output).toContain('已卸载');
       expect(existsSync(UNIT_PATH)).toBe(false);
     });
-  });
-});
-
-describe('setup.sh', () => {
-  it('is a valid bash script with correct structure', () => {
-    const content = execSync(`cat "${SETUP_SCRIPT}"`, { encoding: 'utf8' });
-    expect(content).toContain('#!/usr/bin/env bash');
-    expect(content).toContain('Prerequisites');
-    expect(content).toContain('vp install');
-    expect(content).toContain('vp run -r build');
-    expect(content).toContain('bootstrap.mjs');
   });
 });

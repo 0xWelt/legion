@@ -12,13 +12,18 @@ import {
   type LegionConfig,
 } from './index.js';
 import { gatewayCommand } from './daemon/index.js';
+import * as legionDiscord from '@0xwelt/legion-discord';
+import * as legionLark from '@0xwelt/legion-lark';
+import * as legionKimiCode from '@0xwelt/legion-kimi-code';
+import * as legionClaudeCode from '@0xwelt/legion-claude-code';
+import * as legionCodex from '@0xwelt/legion-codex';
 
-const CANDIDATE_MODULES = [
-  'legion-discord',
-  'legion-lark',
-  'legion-kimi-code',
-  'legion-claude-code',
-  'legion-codex',
+const CANDIDATE_MODULES: Record<string, unknown>[] = [
+  legionDiscord,
+  legionLark,
+  legionKimiCode,
+  legionClaudeCode,
+  legionCodex,
 ];
 
 function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {
@@ -46,31 +51,16 @@ async function loadContributions(): Promise<{
   const configContributions: ConfigContribution[] = [];
   const agentContributions: AgentContribution[] = [];
 
-  for (const moduleName of CANDIDATE_MODULES) {
-    try {
-      const mod = (await import(moduleName)) as Record<string, unknown>;
-      if (mod.configContribution) {
-        configContributions.push(mod.configContribution as ConfigContribution);
-      }
-      if (mod.agentContribution) {
-        agentContributions.push(mod.agentContribution as AgentContribution);
-      }
-    } catch (err) {
-      if (!isModuleNotFound(err)) {
-        throw err;
-      }
+  for (const mod of CANDIDATE_MODULES) {
+    if (mod.configContribution) {
+      configContributions.push(mod.configContribution as ConfigContribution);
+    }
+    if (mod.agentContribution) {
+      agentContributions.push(mod.agentContribution as AgentContribution);
     }
   }
 
   return { configContributions, agentContributions };
-}
-
-function isModuleNotFound(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    'code' in err &&
-    (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND')
-  );
 }
 
 async function createIMProvider(

@@ -86,7 +86,7 @@
 因此：
 
 - 不要新增 `.prettierrc`、`.prettierignore`、`lefthook.yml`、`eslint.config.mjs` 等旧工具配置。
-- 不要往 `package.json` 的 `scripts` 里塞 `format`、`format:check`、`lint`、`lint:fix`、`typecheck`、`test`、`check` 等可由 `vp` 替代的脚本；只保留项目特定的脚本（如 `dev`、`start`、`build`、`prepare`）。
+- 不要往 `package.json` 的 `scripts` 里塞 `format`、`format:check`、`lint`、`lint:fix`、`typecheck`、`test`、`check` 等可由 `vp` 替代的脚本；只保留项目特定的脚本（如 `dev`、`start`、`build`、`prepare`、`changeset`、`version-packages`、`publish-packages`）。
 - 修改代码风格或 lint 规则时，优先改根 `vite.config.ts` 里的 `fmt` / `lint` 字段，而不是新建独立的配置文件。
 
 ## 6. 版本发布
@@ -102,28 +102,31 @@
 ### 6.2 发布流程
 
 1. 带有 changeset 的 PR 合并到 `main`。
-2. `.github/workflows/release.yml` 检测到 `main` 分支推送，运行 `pnpm version-packages`。
+2. `.github/workflows/release.yml` 检测到 `main` 分支推送，运行 `vp run version-packages`。
 3. 如果存在未消费的 changeset，`changesets/action` 会创建一个标题为 **"chore: release packages"** 的 PR，里面包含版本号更新和聚合后的 CHANGELOG。
 4. 维护者 review 并合并该 PR。
-5. PR 合并后，`release.yml` 再次触发，执行 `pnpm publish-packages`，将包发布到 npm 并生成 GitHub Release。
+5. PR 合并后，`release.yml` 再次触发，执行 `vp run publish-packages`，将包发布到 npm 并生成 GitHub Release。
 
 ### 6.3 关键配置
 
-- 所有 workspace 包被配置为 `fixed`，版本号始终保持一致，避免用户安装时出现内部版本不一致。
+- 仅 `@0xwelt/legion` 发布到 npm；其余 workspace 包均标记为 `private: true`，作为内部模块打包进 `@0xwelt/legion`。
 - 根 `package.json` 保持 `private: true`，不会被发布。
 - 发布需要仓库管理员在 GitHub Settings → Secrets 中配置 `NPM_TOKEN`。
 - 启用 npm provenance（`NPM_CONFIG_PROVENANCE=true`），发布到 registry 的包会附带可验证的来源证明。
 
 ### 6.4 发版脚本
 
-根 `package.json` 提供以下专用脚本：
+根 `package.json` 提供以下专用脚本，统一通过 `vp run` 调用：
 
-- `pnpm changeset`：交互式创建 changeset。
-- `pnpm version-packages`：根据 changeset 更新版本号和 CHANGELOG（通常由 CI 执行）。
-- `pnpm publish-packages`：构建所有包并发布到 npm（通常由 CI 执行）。
+- `vp exec changeset`：交互式创建 changeset。
+- `vp run version-packages`：根据 changeset 更新版本号和 CHANGELOG（通常由 CI 执行）。
+- `vp run publish-packages`：构建所有包并发布到 npm（通常由 CI 执行）。
+
+所有包以 `@0xwelt` scope 发布。
 
 ### 6.5 注意事项
 
 - 不要新增 `.changeset/config.json` 之外的独立发布配置文件。
 - 不要手动打 tag 触发发布；所有发布动作都通过合并 "chore: release packages" PR 完成。
-- 若首次发布因 npm 包名被占用失败，需要改为 scoped 包名（如 `@legion-monorepo/legion`）并同步更新 `.changeset/config.json` 和 workspace 引用。
+- 用户安装入口为 `scripts/install.sh`，内部调用 `npm install -g @0xwelt/legion` 并自动完成后续配置。
+- `scripts/` 目录仅保留 `install.sh`，用于终端用户一键安装；本地开发使用 `vp run dev`，不经过该脚本。

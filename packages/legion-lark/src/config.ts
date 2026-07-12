@@ -1,4 +1,4 @@
-import type { ConfigContribution, IMProvider, PromptContext } from 'legion-api';
+import type { ConfigContribution, IMProvider, PromptContext } from '@0xwelt/legion-api';
 import type * as lark from '@larksuiteoapi/node-sdk';
 
 import { LarkProvider } from './lark-provider.js';
@@ -91,12 +91,7 @@ function readLarkEnv(): LarkConfig | undefined {
 }
 
 function isLarkInstalled(): boolean {
-  try {
-    import.meta.resolve('legion-lark');
-    return true;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export const larkConfigContribution: ConfigContribution<LarkConfig> = {

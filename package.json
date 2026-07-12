@@ -16,7 +16,7 @@
   "scripts": {
     "build": "vp run -r build",
     "changeset": "changeset",
-    "dev": "tsx packages/legion/src/bootstrap.ts",
+    "dev": "tsx watch packages/legion/src/bootstrap.ts",
     "prepare": "vp config",
     "publish-packages": "vp run -r build && vp exec changeset publish",
     "start": "node packages/legion/dist/bootstrap.mjs",

@@ -1,4 +1,4 @@
-import type { AgentContribution, AgentRunnerFactory } from 'legion-api';
+import type { AgentContribution, AgentRunnerFactory } from '@0xwelt/legion-api';
 import { KimiCodeRunner } from './kimi-code-runner.js';
 
 export function registerKimiRunners(factory: AgentRunnerFactory): void {

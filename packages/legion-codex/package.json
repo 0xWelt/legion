@@ -1,6 +1,7 @@
 {
-  "name": "legion-codex",
+  "name": "@0xwelt/legion-codex",
   "version": "0.1.0",
+  "private": true,
   "description": "OpenAI Codex CLI agent runner for Legion",
   "keywords": [
     "codex",
@@ -12,16 +13,12 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
     "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

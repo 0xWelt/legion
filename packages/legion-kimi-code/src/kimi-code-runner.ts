@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from 'legion-api';
+import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from '@0xwelt/legion-api';
 
 interface KimiMetaEvent {
   role: 'meta';

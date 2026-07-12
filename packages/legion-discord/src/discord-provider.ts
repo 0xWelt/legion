@@ -17,7 +17,7 @@ import type {
 } from 'discord-api-types/v10';
 import { buildCommandContent, buildSlashCommands } from './discord-slash-commands.js';
 import type { DiscordProviderOptions } from './config.js';
-import { applyAgentEvent, createAccumulatedOutput } from 'legion-api';
+import { applyAgentEvent, createAccumulatedOutput } from '@0xwelt/legion-api';
 import type {
   AgentEvent,
   IMCommandDefinition,
@@ -29,7 +29,7 @@ import type {
   IMThread,
   OutputSegment,
   RenderState,
-} from 'legion-api';
+} from '@0xwelt/legion-api';
 
 export class DiscordProvider implements IMProvider {
   readonly name = 'discord';

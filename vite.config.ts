@@ -5,13 +5,13 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
-      'legion-api': resolve(__dirname, 'packages/legion-api/src/index.ts'),
-      legion: resolve(__dirname, 'packages/legion/src/index.ts'),
-      'legion-kimi-code': resolve(__dirname, 'packages/legion-kimi-code/src/index.ts'),
-      'legion-claude-code': resolve(__dirname, 'packages/legion-claude-code/src/index.ts'),
-      'legion-codex': resolve(__dirname, 'packages/legion-codex/src/index.ts'),
-      'legion-discord': resolve(__dirname, 'packages/legion-discord/src/index.ts'),
-      'legion-lark': resolve(__dirname, 'packages/legion-lark/src/index.ts'),
+      '@0xwelt/legion-api': resolve(__dirname, 'packages/legion-api/src/index.ts'),
+      '@0xwelt/legion': resolve(__dirname, 'packages/legion/src/index.ts'),
+      '@0xwelt/legion-kimi-code': resolve(__dirname, 'packages/legion-kimi-code/src/index.ts'),
+      '@0xwelt/legion-claude-code': resolve(__dirname, 'packages/legion-claude-code/src/index.ts'),
+      '@0xwelt/legion-codex': resolve(__dirname, 'packages/legion-codex/src/index.ts'),
+      '@0xwelt/legion-discord': resolve(__dirname, 'packages/legion-discord/src/index.ts'),
+      '@0xwelt/legion-lark': resolve(__dirname, 'packages/legion-lark/src/index.ts'),
     },
   },
   test: {

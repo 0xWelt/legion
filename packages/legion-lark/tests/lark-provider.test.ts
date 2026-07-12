@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LarkProvider } from '../src/lark-provider.js';
-import type { AgentEvent, RenderState } from 'legion-api';
+import type { AgentEvent, RenderState } from '@0xwelt/legion-api';
 import type { LarkCreateMessageResponse, LarkMessageEvent } from '../src/types.js';
 import type * as lark from '@larksuiteoapi/node-sdk';
 

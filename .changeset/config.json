@@ -2,17 +2,7 @@
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
   "changelog": ["@changesets/changelog-github", { "repo": "0xWelt/legion" }],
   "commit": false,
-  "fixed": [
-    [
-      "legion",
-      "legion-api",
-      "legion-discord",
-      "legion-lark",
-      "legion-kimi-code",
-      "legion-claude-code",
-      "legion-codex"
-    ]
-  ],
+  "fixed": [["@0xwelt/legion"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

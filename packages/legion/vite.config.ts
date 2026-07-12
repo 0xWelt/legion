@@ -4,7 +4,7 @@ import { defineConfig } from 'vite-plus';
 export default defineConfig({
   resolve: {
     alias: {
-      legion: resolve(__dirname, 'src/index.ts'),
+      '@0xwelt/legion': resolve(__dirname, 'src/index.ts'),
     },
   },
   pack: {
@@ -15,5 +15,9 @@ export default defineConfig({
     format: ['esm'],
     dts: true,
     sourcemap: true,
+    shims: true,
+    deps: {
+      alwaysBundle: [/@0xwelt\/legion-.*/],
+    },
   },
 });

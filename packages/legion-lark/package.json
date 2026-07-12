@@ -1,6 +1,7 @@
 {
-  "name": "legion-lark",
+  "name": "@0xwelt/legion-lark",
   "version": "0.1.0",
+  "private": true,
   "description": "Lark (Feishu) IM provider for Legion",
   "keywords": [
     "feishu",
@@ -13,17 +14,13 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
     "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
-    "@larksuiteoapi/node-sdk": "^1.66.1",
-    "legion-api": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*",
+    "@larksuiteoapi/node-sdk": "^1.66.1"
   },
   "engines": {
     "node": ">=20.20.2"

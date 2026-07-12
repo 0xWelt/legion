@@ -1,4 +1,4 @@
-import type { AgentContribution, AgentRunnerFactory } from 'legion-api';
+import type { AgentContribution, AgentRunnerFactory } from '@0xwelt/legion-api';
 import { ClaudeCodeRunner } from './claude-code-runner.js';
 
 export function registerClaudeRunners(factory: AgentRunnerFactory): void {

@@ -1,4 +1,4 @@
-export { DefaultAgentRunnerFactory } from 'legion-api';
+export { DefaultAgentRunnerFactory } from '@0xwelt/legion-api';
 export type {
   AgentConfig,
   AgentRunner,

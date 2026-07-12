@@ -19,7 +19,7 @@ function isSourceCheckout(bootstrapPath: string): boolean {
   if (!existsSync(packageJsonPath)) return false;
   try {
     const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { name?: string };
-    return pkg.name === 'legion';
+    return pkg.name === '@0xwelt/legion';
   } catch {
     return false;
   }

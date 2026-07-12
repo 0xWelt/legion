@@ -1,4 +1,4 @@
-import type { ConfigContribution, IMProvider, PromptContext } from 'legion-api';
+import type { ConfigContribution, IMProvider, PromptContext } from '@0xwelt/legion-api';
 
 import { DiscordProvider } from './discord-provider.js';
 
@@ -55,12 +55,7 @@ function readDiscordEnv(): DiscordConfig | undefined {
 }
 
 function isDiscordInstalled(): boolean {
-  try {
-    import.meta.resolve('legion-discord');
-    return true;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export const discordConfigContribution: ConfigContribution<DiscordProviderOptions> = {

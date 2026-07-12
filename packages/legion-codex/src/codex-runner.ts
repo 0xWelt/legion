@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from 'legion-api';
+import type { AgentConfig, AgentEvent, AgentRunner, SessionContext } from '@0xwelt/legion-api';
 
 // Event/item types are based on codex-rs exec JSONL output.
 // Reference: codex-source/sdk/typescript/src/{events,items}.ts and

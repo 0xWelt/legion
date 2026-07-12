@@ -1,5 +1,5 @@
 {
-  "name": "legion",
+  "name": "@0xwelt/legion",
   "version": "0.1.0",
   "description": "Legion core and bootstrap entry",
   "keywords": [
@@ -28,14 +28,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "workspace:*"
-  },
-  "devDependencies": {
-    "legion-claude-code": "workspace:*",
-    "legion-codex": "workspace:*",
-    "legion-discord": "workspace:*",
-    "legion-kimi-code": "workspace:*",
-    "legion-lark": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*",
+    "@0xwelt/legion-claude-code": "workspace:*",
+    "@0xwelt/legion-codex": "workspace:*",
+    "@0xwelt/legion-discord": "workspace:*",
+    "@0xwelt/legion-kimi-code": "workspace:*",
+    "@0xwelt/legion-lark": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

@@ -1,1 +1,1 @@
-export type { AgentContribution, ConfigContribution, PromptContext } from 'legion-api';
+export type { AgentContribution, ConfigContribution, PromptContext } from '@0xwelt/legion-api';
