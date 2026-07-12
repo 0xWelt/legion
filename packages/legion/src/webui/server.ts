@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { homedir } from 'node:os';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
 
@@ -45,6 +46,23 @@ const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.json': 'application/json',
 };
+
+function expandHome(path: string): string {
+  if (path === '~') return homedir();
+  if (path.startsWith('~/')) return `${homedir()}${path.slice(1)}`;
+  return path;
+}
+
+function parseState(data: unknown): { workdirs: unknown[]; sessions: unknown[] } {
+  const state = data as {
+    workdirs?: Record<string, unknown> | unknown[];
+    sessions?: Record<string, unknown> | unknown[];
+  };
+  return {
+    workdirs: Array.isArray(state.workdirs) ? state.workdirs : Object.values(state.workdirs ?? {}),
+    sessions: Array.isArray(state.sessions) ? state.sessions : Object.values(state.sessions ?? {}),
+  };
+}
 
 function parseJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -224,11 +242,11 @@ export class WebUIServer {
     });
   }
 
-  private async readState(): Promise<unknown> {
+  private async readState(): Promise<{ workdirs: unknown[]; sessions: unknown[] }> {
     if (!this.options.stateStorePath) return { workdirs: [], sessions: [] };
     try {
-      const data = await readFile(this.options.stateStorePath, 'utf8');
-      return JSON.parse(data);
+      const data = await readFile(expandHome(this.options.stateStorePath), 'utf8');
+      return parseState(JSON.parse(data));
     } catch {
       return { workdirs: [], sessions: [] };
     }
