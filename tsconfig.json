@@ -2,13 +2,13 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "legion-api": ["./packages/legion-api/src/index.ts"],
-      "legion": ["./packages/legion/src/index.ts"],
-      "legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
-      "legion-claude-code": ["./packages/legion-claude-code/src/index.ts"],
-      "legion-codex": ["./packages/legion-codex/src/index.ts"],
-      "legion-discord": ["./packages/legion-discord/src/index.ts"],
-      "legion-lark": ["./packages/legion-lark/src/index.ts"]
+      "@0xwelt/legion-api": ["./packages/legion-api/src/index.ts"],
+      "@0xwelt/legion": ["./packages/legion/src/index.ts"],
+      "@0xwelt/legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
+      "@0xwelt/legion-claude-code": ["./packages/legion-claude-code/src/index.ts"],
+      "@0xwelt/legion-codex": ["./packages/legion-codex/src/index.ts"],
+      "@0xwelt/legion-discord": ["./packages/legion-discord/src/index.ts"],
+      "@0xwelt/legion-lark": ["./packages/legion-lark/src/index.ts"]
     }
   },
   "files": [],

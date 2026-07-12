@@ -9,4 +9,4 @@ export type {
   IMTarget,
   IMThread,
   RenderState,
-} from 'legion-api';
+} from '@0xwelt/legion-api';

@@ -10,7 +10,7 @@ import type {
   IMTarget,
   IMThread,
   RenderState,
-} from 'legion-api';
+} from '@0xwelt/legion-api';
 import { applyEvent, buildCard, createInitialState, type CardState } from './card-builder.js';
 import type { LarkProviderOptions } from './config.js';
 import { parseMessageEvent } from './event-handler.js';

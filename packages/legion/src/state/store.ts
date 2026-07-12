@@ -1,9 +1,15 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { LegionState, Session, Workdir, StateStore, JsonStateStoreOptions } from 'legion-api';
+import type {
+  LegionState,
+  Session,
+  Workdir,
+  StateStore,
+  JsonStateStoreOptions,
+} from '@0xwelt/legion-api';
 
-export type { StateStore, JsonStateStoreOptions } from 'legion-api';
+export type { StateStore, JsonStateStoreOptions } from '@0xwelt/legion-api';
 
 type LegacyLegionState = Partial<
   LegionState & {

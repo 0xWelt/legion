@@ -1,5 +1,5 @@
 {
-  "name": "legion",
+  "name": "@0xwelt/legion",
   "version": "0.1.0",
   "description": "Legion core and bootstrap entry",
   "keywords": [
@@ -8,19 +8,32 @@
   ],
   "license": "MIT",
   "author": "",
+  "bin": {
+    "legion": "./dist/bootstrap.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "vp pack",
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "workspace:*"
-  },
-  "devDependencies": {
-    "legion-discord": "workspace:*",
-    "legion-lark": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*",
+    "@0xwelt/legion-claude-code": "workspace:*",
+    "@0xwelt/legion-codex": "workspace:*",
+    "@0xwelt/legion-discord": "workspace:*",
+    "@0xwelt/legion-kimi-code": "workspace:*",
+    "@0xwelt/legion-lark": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

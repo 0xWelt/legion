@@ -1,6 +1,6 @@
-import type { Logger } from 'legion-api';
+import type { Logger } from '@0xwelt/legion-api';
 
-export type { Logger } from 'legion-api';
+export type { Logger } from '@0xwelt/legion-api';
 
 export class ConsoleLogger implements Logger {
   info(message: string, meta?: Record<string, unknown>): void {

@@ -4,19 +4,26 @@ import {
   COMMAND_DEFINITIONS,
   DefaultAgentRunnerFactory,
   JsonStateStore,
+  DEFAULT_CONFIG_PATH,
   type AgentContribution,
   type ConfigContribution,
   type IMCommandDefinition,
   type IMProvider,
   type LegionConfig,
 } from './index.js';
+import { gatewayCommand } from './daemon/index.js';
+import * as legionDiscord from '@0xwelt/legion-discord';
+import * as legionLark from '@0xwelt/legion-lark';
+import * as legionKimiCode from '@0xwelt/legion-kimi-code';
+import * as legionClaudeCode from '@0xwelt/legion-claude-code';
+import * as legionCodex from '@0xwelt/legion-codex';
 
-const CANDIDATE_MODULES = [
-  'legion-discord',
-  'legion-lark',
-  'legion-kimi-code',
-  'legion-claude-code',
-  'legion-codex',
+const CANDIDATE_MODULES: Record<string, unknown>[] = [
+  legionDiscord,
+  legionLark,
+  legionKimiCode,
+  legionClaudeCode,
+  legionCodex,
 ];
 
 function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {
@@ -44,31 +51,16 @@ async function loadContributions(): Promise<{
   const configContributions: ConfigContribution[] = [];
   const agentContributions: AgentContribution[] = [];
 
-  for (const moduleName of CANDIDATE_MODULES) {
-    try {
-      const mod = (await import(moduleName)) as Record<string, unknown>;
-      if (mod.configContribution) {
-        configContributions.push(mod.configContribution as ConfigContribution);
-      }
-      if (mod.agentContribution) {
-        agentContributions.push(mod.agentContribution as AgentContribution);
-      }
-    } catch (err) {
-      if (!isModuleNotFound(err)) {
-        throw err;
-      }
+  for (const mod of CANDIDATE_MODULES) {
+    if (mod.configContribution) {
+      configContributions.push(mod.configContribution as ConfigContribution);
+    }
+    if (mod.agentContribution) {
+      agentContributions.push(mod.agentContribution as AgentContribution);
     }
   }
 
   return { configContributions, agentContributions };
-}
-
-function isModuleNotFound(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    'code' in err &&
-    (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND')
-  );
 }
 
 async function createIMProvider(
@@ -128,8 +120,86 @@ export async function bootstrap(): Promise<void> {
   });
 }
 
+// ── CLI subcommands ────────────────────────────────────────────────────────
+
+async function runSetup(): Promise<void> {
+  const { configContributions } = await loadContributions();
+  const config = await loadConfig(configContributions);
+  console.log(`配置已保存到 ${DEFAULT_CONFIG_PATH}`);
+  console.log('');
+  console.log(JSON.stringify(config, null, 2));
+}
+
+async function configCommand(args: string[]): Promise<void> {
+  const sub = args[0];
+  switch (sub) {
+    case 'show': {
+      const { configContributions } = await loadContributions();
+      const config = await loadConfig(configContributions, undefined, { skipPrompt: true });
+      console.log(JSON.stringify(config, null, 2));
+      break;
+    }
+    default:
+      console.log('Usage: legion config show');
+      process.exitCode = 1;
+  }
+}
+
+async function agentCommand(args: string[]): Promise<void> {
+  const sub = args[0];
+  switch (sub) {
+    case 'list': {
+      const { agentContributions } = await loadContributions();
+      const runnerFactory = new DefaultAgentRunnerFactory();
+      for (const agent of agentContributions) {
+        await agent.register(runnerFactory);
+      }
+      const runners = runnerFactory.list();
+      if (runners.length === 0) {
+        console.log('(no agents registered)');
+      } else {
+        for (const name of runners) {
+          console.log(name);
+        }
+      }
+      break;
+    }
+    default:
+      console.log('Usage: legion agent list');
+      process.exitCode = 1;
+  }
+}
+
+async function main(): Promise<void> {
+  const command = process.argv[2];
+
+  switch (command) {
+    case 'setup':
+      await runSetup();
+      break;
+    case 'config':
+      await configCommand(process.argv.slice(3));
+      break;
+    case 'agent':
+      await agentCommand(process.argv.slice(3));
+      break;
+    case 'gateway':
+      await gatewayCommand(process.argv.slice(3), bootstrap);
+      break;
+    case undefined:
+    case 'run':
+      // 向后兼容：无参数或 'run' = 启动 gateway
+      await bootstrap();
+      break;
+    default:
+      console.log(`Unknown command: ${command}`);
+      console.log('Usage: legion [setup|config|agent|gateway|run]');
+      process.exitCode = 1;
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  bootstrap().catch((err) => {
+  main().catch((err) => {
     console.error(err);
     process.exit(1);
   });

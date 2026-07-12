@@ -4,7 +4,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "legion-api": ["../legion-api/src/index.ts"]
+      "@0xwelt/legion-api": ["../legion-api/src/index.ts"]
     }
   },
   "include": ["src/**/*"],

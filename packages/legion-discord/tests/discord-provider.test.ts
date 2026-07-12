@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DiscordProvider } from '../src/discord-provider.js';
-import type { AgentEvent, RenderState } from 'legion-api';
+import type { AgentEvent, RenderState } from '@0xwelt/legion-api';
 import type * as Discord from 'discord.js';
 
 interface MockComponent {

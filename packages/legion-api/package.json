@@ -1,6 +1,7 @@
 {
-  "name": "legion-api",
+  "name": "@0xwelt/legion-api",
   "version": "0.1.0",
+  "private": true,
   "description": "Public API surface for Legion plugins",
   "keywords": [
     "coding-agent",

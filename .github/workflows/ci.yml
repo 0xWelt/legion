@@ -18,25 +18,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          run_install: false
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: vp install
 
       - name: Build
-        run: pnpm run build
+        run: vp run -r build
 
       - name: Check (format + lint + type-check)
-        run: pnpm exec vp check
+        run: vp check
 
       - name: Test
-        run: pnpm exec vp test
+        run: vp test

@@ -31,13 +31,33 @@
 - 每次对文档进行实质性修改后，更新 `最后更新` 日期。
 - 日期使用 `YYYY-MM-DD` 格式（例如 `2026-06-14`）。
 
-## 3. 外部依赖源码阅读规范
+## 3. 源码阅读规范
+
+### 3a. 外部依赖源码
 
 当 Legion 需要与外部工具（如 Kimi Code CLI）的私有输出格式、协议或行为做对接时，**必须先把对应项目的源码 clone 到本地并阅读相关源码**，而不是仅依赖运行观察、二进制字符串搜索或社区二手资料。
 
 - 例如对接 Kimi Code CLI 的输出格式时，应 clone `https://github.com/MoonshotAI/kimi-code.git`（或确认当前使用的 fork/版本），找到 `apps/kimi-code/src/cli/run-prompt.ts` 等关键文件。
 - 阅读源码后，把关键结论（如 `PROMPT_BLOCK_BULLET = '• '`、`text` 模式下 tool call/result 为 no-op、`tool.progress` 直接写 stderr 等）记录到 `docs/` 下的开发记录中。
 - 如果源码结论与之前的启发式实现有冲突，优先按源码修正实现。
+
+### 3b. 参考实现源码（设计调研）
+
+当设计某个功能而存在**同类/兄弟项目已经实现过**时，**必须先去阅读这些项目的实际源码**，而不是仅凭推测、迁移脚本、配置文件逆向推断。信息来源优先级：
+
+1. **GitHub 源码**（直接 `gh api` 读取、clone 到本地阅读关键模块）
+2. **官方文档**（README、`docs/`、CLI `--help`）
+3. **联网搜索**（WebSearch、官方博客/公告）
+4. **本地已安装的文件**（如配置、systemd unit、脚本）——仅作为辅助佐证
+
+具体操作：
+
+- 已知项目在 GitHub 上→使用 `gh api` 浏览目录树，定位关键文件后读取完整内容
+- 未知 owner →使用 `gh search repos` 搜索
+- 本地已安装→阅读安装目录下的源码，同时通过 `git remote -v` 找到上游 repo
+- **交叉验证**：将源码、文档、本地运行配置三者互相对照，避免片面理解
+
+**反例警示**：在设计 systemd 服务方案时，初始版仅凭 Hermes 的迁移脚本对 OpenClaw 做了"同为 user-level systemd 方案"的推断性描述，未实际阅读 OpenClaw 源码。后续补读 `openclaw/openclaw` 的 `src/daemon/service.ts`、`src/daemon/systemd.ts`、`src/daemon/systemd-unit.ts`、`src/cli/daemon-cli/install.ts` 等模块后，发现遗漏了大量关键设计（如 `buildSystemdUnit()` 程序化生成 unit、`KillMode=control-group`、`SuccessExitStatus=0 143`、`OOMPolicy=continue`、GatewayService 多态接口、跨平台 service 抽象、`--json` 输出、version drift 检测、token 管理等）。这些信息仅靠推断完全无法获得。
 
 ## 4. 先调研、后实现
 
@@ -60,11 +80,53 @@
 - **Lint**：`vp lint` / `vp lint --fix`（Oxlint，替代 ESLint + typescript-eslint）。
 - **类型检查**：`vp check` 会自动运行类型检查（tsgo）；不再使用 `tsc --noEmit`。
 - **测试**：`vp test`（Vitest，配置在根 `vite.config.ts` 的 `test` 字段）。
-- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`；根 `pnpm run build` 实际为 `vp run -r build`）。
+- **构建**：`vp pack`（每个 `packages/*` 的 `vite.config.ts` 配置 `pack`）；根构建入口为 `vp run -r build`。
 - **Git Hooks**：由 `vp config` / `prepare` 自动安装，配置在根 `vite.config.ts` 的 `staged` 字段；不再使用 lefthook。
 
 因此：
 
 - 不要新增 `.prettierrc`、`.prettierignore`、`lefthook.yml`、`eslint.config.mjs` 等旧工具配置。
-- 不要往 `package.json` 的 `scripts` 里塞 `format`、`format:check`、`lint`、`lint:fix`、`typecheck`、`test`、`check` 等可由 `vp` 替代的脚本；只保留项目特定的脚本（如 `dev`、`start`、`build`、`prepare`）。
+- 不要往 `package.json` 的 `scripts` 里塞 `format`、`format:check`、`lint`、`lint:fix`、`typecheck`、`test`、`check` 等可由 `vp` 替代的脚本；只保留项目特定的脚本（如 `dev`、`start`、`build`、`prepare`、`changeset`、`version-packages`、`publish-packages`）。
 - 修改代码风格或 lint 规则时，优先改根 `vite.config.ts` 里的 `fmt` / `lint` 字段，而不是新建独立的配置文件。
+
+## 6. 版本发布
+
+项目使用 [Changesets](https://github.com/changesets/changesets) 管理 monorepo 版本和 CHANGELOG，并通过 `changesets/action` 在 GitHub Actions 中自动发布。
+
+### 6.1 日常开发
+
+- 任何对用户可见的改动（新功能、bug 修复、破坏性变更）在提交 PR 时都应该附带一个 `.changeset/*.md` 文件。
+- 使用 `vp exec changeset` 交互式创建 changeset。
+- changeset 的语义只描述本次变更，不要手动修改 `package.json` 版本号。
+
+### 6.2 发布流程
+
+1. 带有 changeset 的 PR 合并到 `main`。
+2. `.github/workflows/release.yml` 检测到 `main` 分支推送，运行 `vp run version-packages`。
+3. 如果存在未消费的 changeset，`changesets/action` 会创建一个标题为 **"chore: release packages"** 的 PR，里面包含版本号更新和聚合后的 CHANGELOG。
+4. 维护者 review 并合并该 PR。
+5. PR 合并后，`release.yml` 再次触发，执行 `vp run publish-packages`，将包发布到 npm 并生成 GitHub Release。
+
+### 6.3 关键配置
+
+- 仅 `@0xwelt/legion` 发布到 npm；其余 workspace 包均标记为 `private: true`，作为内部模块打包进 `@0xwelt/legion`。
+- 根 `package.json` 保持 `private: true`，不会被发布。
+- 发布需要仓库管理员在 GitHub Settings → Secrets 中配置 `NPM_TOKEN`。
+- 启用 npm provenance（`NPM_CONFIG_PROVENANCE=true`），发布到 registry 的包会附带可验证的来源证明。
+
+### 6.4 发版脚本
+
+根 `package.json` 提供以下专用脚本，统一通过 `vp run` 调用：
+
+- `vp exec changeset`：交互式创建 changeset。
+- `vp run version-packages`：根据 changeset 更新版本号和 CHANGELOG（通常由 CI 执行）。
+- `vp run publish-packages`：构建所有包并发布到 npm（通常由 CI 执行）。
+
+所有包以 `@0xwelt` scope 发布。
+
+### 6.5 注意事项
+
+- 不要新增 `.changeset/config.json` 之外的独立发布配置文件。
+- 不要手动打 tag 触发发布；所有发布动作都通过合并 "chore: release packages" PR 完成。
+- 用户安装入口为 `scripts/install.sh`，内部调用 `npm install -g @0xwelt/legion` 并自动完成后续配置。
+- `scripts/` 目录仅保留 `install.sh`，用于终端用户一键安装；本地开发使用 `vp run dev`，不经过该脚本。

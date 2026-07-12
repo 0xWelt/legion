@@ -4,4 +4,4 @@ export type {
   AgentRunnerFactory,
   RunnerState,
   SessionContext,
-} from 'legion-api';
+} from '@0xwelt/legion-api';

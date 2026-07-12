@@ -4,11 +4,11 @@
     "rootDir": "./packages/legion/src",
     "outDir": "./packages/legion/dist",
     "paths": {
-      "legion-api": ["./packages/legion-api/src/index.ts"],
-      "legion": ["./packages/legion/src/index.ts"],
-      "legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
-      "legion-discord": ["./packages/legion-discord/src/index.ts"],
-      "legion-lark": ["./packages/legion-lark/src/index.ts"]
+      "@0xwelt/legion-api": ["./packages/legion-api/src/index.ts"],
+      "@0xwelt/legion": ["./packages/legion/src/index.ts"],
+      "@0xwelt/legion-kimi-code": ["./packages/legion-kimi-code/src/index.ts"],
+      "@0xwelt/legion-discord": ["./packages/legion-discord/src/index.ts"],
+      "@0xwelt/legion-lark": ["./packages/legion-lark/src/index.ts"]
     }
   },
   "include": ["packages/legion/src/bootstrap.ts"],

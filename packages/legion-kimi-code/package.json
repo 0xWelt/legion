@@ -1,6 +1,7 @@
 {
-  "name": "legion-kimi-code",
+  "name": "@0xwelt/legion-kimi-code",
   "version": "0.1.0",
+  "private": true,
   "description": "Kimi Code agent runners for Legion",
   "keywords": [
     "coding-agent",
@@ -16,10 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "workspace:*"
-  },
-  "devDependencies": {
-    "legion": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

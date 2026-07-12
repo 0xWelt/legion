@@ -1,4 +1,4 @@
-import type { AgentEvent } from 'legion-api';
+import type { AgentEvent } from '@0xwelt/legion-api';
 import type { LarkCard } from './types.js';
 
 const MAX_TEXT_LENGTH = 3000;

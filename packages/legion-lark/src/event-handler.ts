@@ -1,4 +1,4 @@
-import type { IMMessage } from 'legion-api';
+import type { IMMessage } from '@0xwelt/legion-api';
 import type { LarkMessageEvent } from './types.js';
 
 export function parseMessageEvent(event: LarkMessageEvent): IMMessage | undefined {

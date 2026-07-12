@@ -1,6 +1,7 @@
 {
-  "name": "legion-claude-code",
+  "name": "@0xwelt/legion-claude-code",
   "version": "0.1.0",
+  "private": true,
   "description": "Claude Code agent runner for Legion",
   "keywords": [
     "claude-code",
@@ -16,10 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "legion-api": "workspace:*"
-  },
-  "devDependencies": {
-    "legion": "workspace:*"
+    "@0xwelt/legion-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.20.2"

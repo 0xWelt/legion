@@ -30,11 +30,11 @@
     {
       "description": "Ignore internal workspace packages",
       "matchPackageNames": [
-        "legion",
-        "legion-api",
-        "legion-discord",
-        "legion-kimi-code",
-        "legion-lark"
+        "@0xwelt/legion",
+        "@0xwelt/legion-api",
+        "@0xwelt/legion-discord",
+        "@0xwelt/legion-kimi-code",
+        "@0xwelt/legion-lark"
       ],
       "enabled": false
     },
