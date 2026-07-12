@@ -1,5 +1,11 @@
 # @0xwelt/legion
 
+## 0.2.1
+
+### Patch Changes
+
+- [#33](https://github.com/0xWelt/legion/pull/33) [`368dda3`](https://github.com/0xWelt/legion/commit/368dda3487fadf4553b779be4ca26778522a9236) Thanks [@0xWelt](https://github.com/0xWelt)! - Move bundled internal workspace dependencies to `devDependencies` so the published package no longer depends on unreleased workspace packages.
+
 ## 0.2.0
 
 ### Minor Changes
