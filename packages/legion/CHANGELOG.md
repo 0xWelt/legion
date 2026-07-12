@@ -1,5 +1,11 @@
 # @0xwelt/legion
 
+## 0.2.3
+
+### Patch Changes
+
+- [#37](https://github.com/0xWelt/legion/pull/37) [`f6b66d2`](https://github.com/0xWelt/legion/commit/f6b66d276861cf477be7bbae17b59f588363ce50) Thanks [@0xWelt](https://github.com/0xWelt)! - Resolve the real path of `process.argv[1]` when detecting the main module, so the CLI works correctly when invoked through npm's bin symlink.
+
 ## 0.2.2
 
 ### Patch Changes
