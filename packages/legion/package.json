@@ -27,7 +27,7 @@
     "build": "vp pack",
     "test": "vitest run"
   },
-  "dependencies": {
+  "devDependencies": {
     "@0xwelt/legion-api": "workspace:*",
     "@0xwelt/legion-claude-code": "workspace:*",
     "@0xwelt/legion-codex": "workspace:*",
