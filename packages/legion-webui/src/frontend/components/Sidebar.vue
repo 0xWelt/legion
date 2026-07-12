@@ -32,7 +32,9 @@ function statusClass(status: string): string {
 
     <nav class="nav">
       <button :class="{ active: currentView === 'chat' }" @click="emit('switch-view', 'chat')">
-        <span class="nav-icon">💬</span> Chat
+        <span class="nav-icon">💬</span>
+        <span class="nav-label">Chat</span>
+        <span class="chevron" :class="{ expanded: currentView === 'chat' }">▶</span>
       </button>
       <button :class="{ active: currentView === 'status' }" @click="emit('switch-view', 'status')">
         <span class="nav-icon">📊</span> Status
@@ -45,31 +47,34 @@ function statusClass(status: string): string {
       </button>
     </nav>
 
-    <div class="section-title">Workdirs</div>
+    <div v-if="currentView === 'chat'" class="chat-sidebar">
+      <div class="section-title">Conversations</div>
+      <div class="workdir-list">
+        <div
+          v-for="workdir in workdirs"
+          :key="workdir.id"
+          class="workdir"
+          :data-workdir-id="workdir.id"
+          :class="{ active: activeWorkdir === workdir.id && !activeSession }"
+          @click="emit('select-session', workdir.id)"
+        >
+          <div class="workdir-header">
+            <div class="workdir-name">{{ workdir.name }}</div>
+            <div class="workdir-path" :title="workdir.path">{{ workdir.path }}</div>
+          </div>
 
-    <div class="workdir-list">
-      <div
-        v-for="workdir in workdirs"
-        :key="workdir.id"
-        class="workdir"
-        :class="{ active: activeWorkdir === workdir.id && !activeSession }"
-        @click="emit('select-session', workdir.id)"
-      >
-        <div class="workdir-header">
-          <div class="workdir-name">{{ workdir.name }}</div>
-          <div class="workdir-path" :title="workdir.path">{{ workdir.path }}</div>
-        </div>
-
-        <div class="session-list">
-          <div
-            v-for="session in sessionsFor(workdir.id, sessions)"
-            :key="session.id"
-            class="session"
-            :class="{ active: activeSession === session.id }"
-            @click.stop="emit('select-session', workdir.id, session.id)"
-          >
-            <span class="session-name">{{ session.name }}</span>
-            <span class="status" :class="statusClass(session.status)">{{ session.status }}</span>
+          <div class="session-list">
+            <div
+              v-for="session in sessionsFor(workdir.id, sessions)"
+              :key="session.id"
+              class="session"
+              :data-session-id="session.id"
+              :class="{ active: activeSession === session.id }"
+              @click.stop="emit('select-session', workdir.id, session.id)"
+            >
+              <span class="session-name">{{ session.name }}</span>
+              <span class="status" :class="statusClass(session.status)">{{ session.status }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -132,6 +137,27 @@ function statusClass(status: string): string {
   font-size: 15px;
   width: 20px;
   text-align: center;
+}
+.nav-label {
+  flex: 1;
+}
+.chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  color: #8b949e;
+}
+.nav button.active .chevron {
+  color: #fff;
+}
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.chat-sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .section-title {
