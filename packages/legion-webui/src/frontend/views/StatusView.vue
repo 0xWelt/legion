@@ -71,6 +71,8 @@ onMounted(fetchStatus);
 }
 h1 {
   margin-top: 0;
+  color: #e6edf3;
+  font-size: 22px;
 }
 .card {
   background: #161b22;
@@ -109,6 +111,7 @@ h1 {
   background: #21262d;
   color: #c9d1d9;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 .actions button:hover {
   background: #30363d;

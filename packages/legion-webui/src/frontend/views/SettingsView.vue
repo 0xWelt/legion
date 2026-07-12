@@ -71,6 +71,8 @@ function update(key: string, value: string) {
 }
 h1 {
   margin-top: 0;
+  color: #e6edf3;
+  font-size: 22px;
 }
 .card {
   background: #161b22;
@@ -93,6 +95,11 @@ input {
   border: 1px solid #30363d;
   background: #0d1117;
   color: #c9d1d9;
+  outline: none;
+}
+input:focus {
+  border-color: #1f6feb;
+  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
 }
 button {
   padding: 8px 18px;
@@ -101,9 +108,10 @@ button {
   background: #1f6feb;
   color: #fff;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
-button:disabled {
-  opacity: 0.5;
+button:hover:not(:disabled) {
+  background: #388bfd;
 }
 .saved {
   color: #3fb950;

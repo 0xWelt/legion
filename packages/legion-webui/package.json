@@ -12,6 +12,9 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@types/dompurify": "^3.2.0",
+    "dompurify": "^3.4.12",
+    "marked": "^18.0.6",
     "vue": "^3.5.0"
   },
   "devDependencies": {
