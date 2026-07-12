@@ -1,5 +1,11 @@
 # @0xwelt/legion
 
+## 0.2.2
+
+### Patch Changes
+
+- [#35](https://github.com/0xWelt/legion/pull/35) [`31e7121`](https://github.com/0xWelt/legion/commit/31e712139a62849b881a65fc771c8e8dd7759821) Thanks [@0xWelt](https://github.com/0xWelt)! - Add shebang to `src/bootstrap.ts` so the published `dist/bootstrap.mjs` is executable after `npm install -g`.
+
 ## 0.2.1
 
 ### Patch Changes
