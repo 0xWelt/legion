@@ -135,7 +135,7 @@ async function configCommand(args: string[]): Promise<void> {
   switch (sub) {
     case 'show': {
       const { configContributions } = await loadContributions();
-      const config = await loadConfig(configContributions);
+      const config = await loadConfig(configContributions, undefined, { skipPrompt: true });
       console.log(JSON.stringify(config, null, 2));
       break;
     }

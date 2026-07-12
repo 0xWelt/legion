@@ -33,8 +33,7 @@ describe('bootstrap CLI', () => {
   });
 
   describe('config show', () => {
-    it('outputs JSON config', () => {
-      // Config may or may not exist, but the command should run without crash
+    it('outputs JSON config or reports missing config', () => {
       try {
         const output = run(`${BOOTSTRAP_MJS} config show`);
         // If config exists, it should be valid JSON
@@ -42,12 +41,11 @@ describe('bootstrap CLI', () => {
           JSON.parse(output.trim());
         }
       } catch (err) {
-        // If no config exists and interactive prompt fails in non-TTY, that's OK
-        // The command structure should still be reachable
-        const msg = String(err);
-        expect(
-          msg.includes('未安装任何 IM provider') || msg.includes('未配置') || msg.includes('config')
-        ).toBeTruthy();
+        const stderr = (err as { stderr?: string }).stderr ?? '';
+        const stdout = (err as { stdout?: string }).stdout ?? '';
+        const combined = `${stdout}${stderr}`;
+        // When no config exists, config show should fail gracefully without prompting
+        expect(combined).toMatch(/未找到配置文件|未配置|config/);
       }
     });
   });

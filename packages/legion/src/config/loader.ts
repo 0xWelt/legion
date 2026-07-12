@@ -8,9 +8,14 @@ import type { ConfigContribution, PromptContext } from './contribution.js';
 
 export const DEFAULT_CONFIG_PATH = join(homedir(), '.legion', 'config.json');
 
+export interface LoadConfigOptions {
+  skipPrompt?: boolean;
+}
+
 export async function loadConfig(
   contributions: ConfigContribution[],
-  configPath = DEFAULT_CONFIG_PATH
+  configPath = DEFAULT_CONFIG_PATH,
+  options: LoadConfigOptions = {}
 ): Promise<LegionConfig> {
   const existing = await readExistingConfig(configPath);
   if (existing) {
@@ -22,6 +27,10 @@ export async function loadConfig(
     const config = mergeWithDefaults(fromEnv, contributions);
     await saveConfig(configPath, config);
     return config;
+  }
+
+  if (options.skipPrompt) {
+    throw new Error(`未找到配置文件：${configPath}`);
   }
 
   const installed = await detectInstalledProviders(contributions);
