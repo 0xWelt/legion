@@ -31,13 +31,6 @@
     "vite-plus": "^0.2.4",
     "vitest": "^4.0.0"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.11.0",
-      "onFail": "download"
-    }
-  },
   "engines": {
     "node": ">=20.20.2"
   },
