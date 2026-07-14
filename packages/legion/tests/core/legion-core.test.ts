@@ -8,6 +8,7 @@ import type { LegionConfig } from '../../src/config/schema.js';
 import { LegionCore } from '../../src/core/legion-core.js';
 import type { AgentEvent } from '../../src/core/types.js';
 import type {
+  IMForkEvent,
   IMMessage,
   IMMessageRef,
   IMProvider,
@@ -35,11 +36,16 @@ class FakeProvider implements IMProvider {
   readonly embeds: Array<{ target: IMTarget; embed: unknown }> = [];
   readonly rendered: AgentEvent[] = [];
   private handlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
+  private forkHandlers: Array<(event: IMForkEvent) => void | Promise<void>> = [];
 
   async start(): Promise<void> {}
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.handlers.push(handler);
+  }
+
+  onSessionFork(handler: (event: IMForkEvent) => void | Promise<void>): void {
+    this.forkHandlers.push(handler);
   }
 
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
@@ -74,6 +80,12 @@ class FakeProvider implements IMProvider {
   async emitMessage(msg: IMMessage): Promise<void> {
     for (const handler of this.handlers) {
       await handler(msg);
+    }
+  }
+
+  async emitFork(event: IMForkEvent): Promise<void> {
+    for (const handler of this.forkHandlers) {
+      await handler(event);
     }
   }
 }
@@ -349,5 +361,60 @@ describe('LegionCore', () => {
 
     expect(provider.sent.some((s) => s.text.includes('未知 agent'))).toBe(true);
     expect(provider.sent.some((s) => s.text.includes('kimi-code, claude-code'))).toBe(true);
+  });
+
+  it('forks session from parent and notifies child session', async () => {
+    const provider = new FakeProvider();
+    const factory = new DefaultAgentRunnerFactory();
+    factory.register('kimi-code', () => new FakeRunner([]));
+    factory.register('claude-code', () => new FakeRunner([]));
+    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
+    const core = new LegionCore({
+      config: makeConfig(),
+      imProvider: provider,
+      runnerFactory: factory,
+      stateStore: store,
+    });
+    await core.start();
+
+    await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
+    await provider.emitMessage(makeMsg('/agent claude-code'));
+    await provider.emitFork({
+      provider: 'fake',
+      parentSessionId: 'session-1',
+      childSessionId: 'session-2',
+      name: 'thread-a',
+    });
+
+    const child = provider.sent.find((s) => s.target.sessionId === 'session-2');
+    expect(child).toBeDefined();
+    expect(child!.text).toContain('已 fork 新 session');
+    expect(child!.text).toContain(`workdir: ${tempDir}`);
+    expect(child!.text).toContain('agent: claude-code');
+  });
+
+  it('creates default session when fork parent is unknown', async () => {
+    const provider = new FakeProvider();
+    const factory = new DefaultAgentRunnerFactory();
+    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
+    const core = new LegionCore({
+      config: makeConfig(),
+      imProvider: provider,
+      runnerFactory: factory,
+      stateStore: store,
+    });
+    await core.start();
+
+    await provider.emitFork({
+      provider: 'fake',
+      parentSessionId: 'unknown',
+      childSessionId: 'session-2',
+      name: 'orphan-thread',
+    });
+
+    const child = provider.sent.find((s) => s.target.sessionId === 'session-2');
+    expect(child).toBeDefined();
+    expect(child!.text).toContain('已 fork 新 session');
+    expect(child!.text).toContain('agent: kimi-code');
   });
 });

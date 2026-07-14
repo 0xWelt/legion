@@ -3,6 +3,7 @@ export type {
   IMCommandOption,
   IMEmbed,
   IMEmbedField,
+  IMForkEvent,
   IMMessage,
   IMMessageRef,
   IMProvider,

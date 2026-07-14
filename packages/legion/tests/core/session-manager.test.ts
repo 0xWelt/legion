@@ -38,11 +38,26 @@ describe('InMemorySessionManager', () => {
     expect(manager.get('123')?.agentSessionId).toBe('agent-sid-1');
   });
 
-  it('lists sessions', () => {
+  it('forks session from parent inheriting path and agent', () => {
     const manager = new InMemorySessionManager();
-    manager.create('1', 'test', 'a', 'kimi-code');
-    manager.create('2', 'test', 'b', 'claude-code');
+    manager.create('parent', 'test', 'main', 'kimi-code');
+    manager.setPath('parent', '/tmp/repo');
+    manager.setAgentSessionId('parent', 'agent-sid-1');
 
-    expect(manager.list()).toHaveLength(2);
+    const child = manager.fork('parent', 'child', 'thread-a');
+
+    expect(child).toBeDefined();
+    expect(child!.id).toBe('child');
+    expect(child!.provider).toBe('test');
+    expect(child!.name).toBe('thread-a');
+    expect(child!.path).toBe('/tmp/repo');
+    expect(child!.agent).toBe('kimi-code');
+    expect(child!.agentSessionId).toBeUndefined();
+    expect(child!.status).toBe('idle');
+  });
+
+  it('returns undefined when forking from unknown parent', () => {
+    const manager = new InMemorySessionManager();
+    expect(manager.fork('unknown', 'child')).toBeUndefined();
   });
 });

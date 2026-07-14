@@ -22,6 +22,7 @@ import type {
   AgentEvent,
   IMCommandDefinition,
   IMEmbed,
+  IMForkEvent,
   IMMessage,
   IMMessageRef,
   IMProvider,
@@ -34,6 +35,7 @@ export class DiscordProvider implements IMProvider {
   readonly name = 'discord';
   private readonly client: Client;
   private messageHandlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
+  private forkHandlers: Array<(event: IMForkEvent) => void | Promise<void>> = [];
   private toolNames = new Map<string, string>();
   private pendingInteractions = new Map<string, ChatInputCommandInteraction>();
   private commandDefinitions: IMCommandDefinition[] = [];
@@ -81,6 +83,22 @@ export class DiscordProvider implements IMProvider {
       if (channel.guildId !== this.options.allowedGuildId) return;
       if (!channel.isTextBased() || channel.isThread()) return;
       void (channel as TextChannel).send(this.buildWorkspaceGuide());
+    });
+
+    this.client.on('threadCreate', (thread) => {
+      if (thread.guildId !== this.options.allowedGuildId) return;
+      const parentId = thread.parentId;
+      if (!parentId) return;
+
+      const event: IMForkEvent = {
+        provider: this.name,
+        parentSessionId: parentId,
+        childSessionId: thread.id,
+        name: thread.name ?? undefined,
+      };
+      for (const handler of this.forkHandlers) {
+        void handler(event);
+      }
     });
 
     this.client.on('interactionCreate', (interaction) =>
@@ -148,6 +166,10 @@ export class DiscordProvider implements IMProvider {
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.messageHandlers.push(handler);
+  }
+
+  onSessionFork(handler: (event: IMForkEvent) => void | Promise<void>): void {
+    this.forkHandlers.push(handler);
   }
 
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {

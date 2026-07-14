@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   IMCommandDefinition,
   IMEmbed,
+  IMForkEvent,
   IMMessage,
   IMMessageRef,
   IMProvider,
@@ -23,6 +24,7 @@ export class MultiIMProvider implements IMProvider {
   private readonly messageProviders = new Map<string, IMProvider>();
 
   private messageHandler?: (msg: IMMessage) => void | Promise<void>;
+  private forkHandler?: (event: IMForkEvent) => void | Promise<void>;
 
   constructor(private readonly providers: IMProvider[]) {}
 
@@ -35,12 +37,17 @@ export class MultiIMProvider implements IMProvider {
   async start(): Promise<void> {
     for (const provider of this.providers) {
       provider.onMessage((msg) => this.recordSourceAndHandle(msg));
+      provider.onSessionFork?.((event) => this.forwardFork(provider, event));
     }
     await Promise.all(this.providers.map((p) => p.start()));
   }
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.messageHandler = handler;
+  }
+
+  onSessionFork(handler: (event: IMForkEvent) => void | Promise<void>): void {
+    this.forkHandler = handler;
   }
 
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
@@ -85,6 +92,10 @@ export class MultiIMProvider implements IMProvider {
       this.messageProviders.set(msg.id, provider);
     }
     void this.messageHandler?.(msg);
+  }
+
+  private forwardFork(provider: IMProvider, event: IMForkEvent): void {
+    void this.forkHandler?.({ ...event, provider: event.provider || provider.name });
   }
 
   private resolveProvider(target: IMTarget): IMProvider {

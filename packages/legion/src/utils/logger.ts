@@ -11,6 +11,10 @@ export class ConsoleLogger implements Logger {
     console.error(`${this.timestamp()} [ERROR] ${message}`, meta ? JSON.stringify(meta) : '');
   }
 
+  warn(message: string, meta?: Record<string, unknown>): void {
+    console.warn(`${this.timestamp()} [WARN] ${message}`, meta ? JSON.stringify(meta) : '');
+  }
+
   private timestamp(): string {
     return new Date().toISOString();
   }

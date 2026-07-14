@@ -28,6 +28,20 @@ export interface IMProvider {
   renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState>;
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
+
+  /**
+   * Optional hook for providers that can spawn child IM sessions (e.g. Discord
+   * threads). When a child session is created, the provider emits an event so
+   * the core can fork the parent Agent session's settings into the child.
+   */
+  onSessionFork?(handler: (event: IMForkEvent) => void | Promise<void>): void;
+}
+
+export interface IMForkEvent {
+  provider: string;
+  parentSessionId: string;
+  childSessionId: string;
+  name?: string;
 }
 
 export interface IMTarget {

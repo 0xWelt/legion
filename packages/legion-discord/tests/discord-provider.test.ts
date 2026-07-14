@@ -818,6 +818,58 @@ describe('DiscordProvider', () => {
     expect(channel.send).toHaveBeenCalledWith(expect.stringContaining('/workdir'));
   });
 
+  it('emits session fork event when a thread is created', async () => {
+    const provider = new DiscordProvider({ botToken: 'token', allowedGuildId: 'guild' });
+    await provider.start();
+
+    const forks: unknown[] = [];
+    provider.onSessionFork((event) => {
+      forks.push(event);
+    });
+
+    const calls = lastClient().on.mock.calls as Array<[string, (ch: unknown) => void]>;
+    const threadCreate = calls.find(([event]) => event === 'threadCreate')?.[1];
+    expect(threadCreate).toBeDefined();
+
+    threadCreate!({
+      guildId: 'guild',
+      parentId: 'ch-1',
+      id: 'thread-1',
+      name: 'feature-thread',
+    });
+
+    expect(forks).toHaveLength(1);
+    expect(forks[0]).toMatchObject({
+      provider: 'discord',
+      parentSessionId: 'ch-1',
+      childSessionId: 'thread-1',
+      name: 'feature-thread',
+    });
+  });
+
+  it('ignores threads created in other guilds', async () => {
+    const provider = new DiscordProvider({ botToken: 'token', allowedGuildId: 'guild' });
+    await provider.start();
+
+    const forks: unknown[] = [];
+    provider.onSessionFork((event) => {
+      forks.push(event);
+    });
+
+    const calls = lastClient().on.mock.calls as Array<[string, (ch: unknown) => void]>;
+    const threadCreate = calls.find(([event]) => event === 'threadCreate')?.[1];
+    expect(threadCreate).toBeDefined();
+
+    threadCreate!({
+      guildId: 'other-guild',
+      parentId: 'ch-1',
+      id: 'thread-1',
+      name: 'feature-thread',
+    });
+
+    expect(forks).toHaveLength(0);
+  });
+
   it('falls back to non-reply send when reply target is a system message', async () => {
     const provider = new DiscordProvider({ botToken: 'token', allowedGuildId: 'guild' });
     const channel = createMockChannel();
