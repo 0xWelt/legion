@@ -2,12 +2,11 @@
 import { computed } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import type { ChatMessage, Session, Workdir } from '../types.js';
+import type { ChatMessage, Session } from '../types.js';
 
 const props = defineProps<{
   message: ChatMessage;
   session?: Session;
-  workdir?: Workdir;
 }>();
 
 const isUser = computed(() => props.message.role === 'user');

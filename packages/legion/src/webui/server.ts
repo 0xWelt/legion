@@ -2,30 +2,14 @@ import { createServer, type IncomingMessage, type Server as HttpServer } from 'n
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { homedir } from 'node:os';
-import { createRequire } from 'node:module';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
 
-const require = createRequire(import.meta.url);
-const pkg = require('../../package.json') as { version: string };
-
 export interface ClientMessagePayload {
-  channelId: string;
-  threadId?: string;
+  sessionId: string;
   content: string;
   authorName?: string;
   authorId?: string;
-}
-
-export interface ClientThreadCreatePayload {
-  channelId: string;
-  threadId: string;
-  name: string;
-}
-
-export interface ClientThreadArchivePayload {
-  threadId: string;
-  archived: boolean;
 }
 
 export type ServerMessage =
@@ -38,9 +22,6 @@ export type ServerMessage =
   | { type: 'agent-event'; target: unknown; event: unknown };
 
 type MessageHandler = (payload: ClientMessagePayload) => void;
-type ThreadCreateHandler = (payload: ClientThreadCreatePayload) => void;
-type ThreadDeleteHandler = (threadId: string) => void;
-type ThreadArchiveHandler = (payload: ClientThreadArchivePayload) => void;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -57,15 +38,16 @@ function expandHome(path: string): string {
   return path;
 }
 
-function parseState(data: unknown): { workdirs: unknown[]; sessions: unknown[] } {
+function parseSessions(data: unknown): unknown[] {
   const state = data as {
-    workdirs?: Record<string, unknown> | unknown[];
     sessions?: Record<string, unknown> | unknown[];
+    workdirs?: Record<string, unknown> | unknown[];
   };
-  return {
-    workdirs: Array.isArray(state.workdirs) ? state.workdirs : Object.values(state.workdirs ?? {}),
-    sessions: Array.isArray(state.sessions) ? state.sessions : Object.values(state.sessions ?? {}),
-  };
+  if (state.sessions) {
+    return Array.isArray(state.sessions) ? state.sessions : Object.values(state.sessions);
+  }
+  // Legacy state format fallback.
+  return Array.isArray(state.workdirs) ? state.workdirs : Object.values(state.workdirs ?? {});
 }
 
 function parseJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -100,26 +82,11 @@ export class WebUIServer {
   private wss?: WebSocketServer;
   private sockets = new Set<WebSocket>();
   private messageHandler?: MessageHandler;
-  private threadCreateHandler?: ThreadCreateHandler;
-  private threadDeleteHandler?: ThreadDeleteHandler;
-  private threadArchiveHandler?: ThreadArchiveHandler;
 
   constructor(private readonly options: ServerOptions = {}) {}
 
   onMessage(handler: MessageHandler): void {
     this.messageHandler = handler;
-  }
-
-  onThreadCreate(handler: ThreadCreateHandler): void {
-    this.threadCreateHandler = handler;
-  }
-
-  onThreadDelete(handler: ThreadDeleteHandler): void {
-    this.threadDeleteHandler = handler;
-  }
-
-  onThreadArchive(handler: ThreadArchiveHandler): void {
-    this.threadArchiveHandler = handler;
   }
 
   broadcast(msg: ServerMessage): void {
@@ -150,9 +117,9 @@ export class WebUIServer {
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
 
       if (req.method === 'GET' && url.pathname === '/api/state') {
-        const state = await this.readState();
+        const sessions = await this.readSessions();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(state));
+        res.end(JSON.stringify({ sessions }));
         return;
       }
 
@@ -250,28 +217,20 @@ export class WebUIServer {
     });
   }
 
-  private async readState(): Promise<{ workdirs: unknown[]; sessions: unknown[] }> {
-    if (!this.options.stateStorePath) return { workdirs: [], sessions: [] };
+  private async readSessions(): Promise<unknown[]> {
+    if (!this.options.stateStorePath) return [];
     try {
       const data = await readFile(expandHome(this.options.stateStorePath), 'utf8');
-      const { workdirs, sessions } = parseState(JSON.parse(data));
+      const sessions = parseSessions(JSON.parse(data));
       const provider = this.options.provider ?? 'webui';
-      return {
-        workdirs: workdirs.filter(
-          (w) =>
-            typeof w === 'object' &&
-            w !== null &&
-            (w as Record<string, unknown>).provider === provider
-        ),
-        sessions: sessions.filter(
-          (s) =>
-            typeof s === 'object' &&
-            s !== null &&
-            (s as Record<string, unknown>).provider === provider
-        ),
-      };
+      return sessions.filter(
+        (s) =>
+          typeof s === 'object' &&
+          s !== null &&
+          (s as Record<string, unknown>).provider === provider
+      );
     } catch {
-      return { workdirs: [], sessions: [] };
+      return [];
     }
   }
 
@@ -295,7 +254,7 @@ export class WebUIServer {
         ? 'dev'
         : 'unknown';
     const base: ServiceStatus = {
-      version: pkg.version,
+      version: process.env.npm_package_version ?? 'unknown',
       mode,
       loaded: false,
     };
@@ -327,41 +286,15 @@ export class WebUIServer {
 
     if (
       data.type === 'message' &&
-      typeof data.channelId === 'string' &&
+      typeof data.sessionId === 'string' &&
       typeof data.content === 'string'
     ) {
       this.messageHandler?.({
-        channelId: data.channelId,
-        threadId: typeof data.threadId === 'string' ? data.threadId : undefined,
+        sessionId: data.sessionId,
         content: data.content,
         authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
         authorId: typeof data.authorId === 'string' ? data.authorId : undefined,
       });
-    }
-
-    if (
-      data.type === 'thread-create' &&
-      typeof data.channelId === 'string' &&
-      typeof data.threadId === 'string' &&
-      typeof data.name === 'string'
-    ) {
-      this.threadCreateHandler?.({
-        channelId: data.channelId,
-        threadId: data.threadId,
-        name: data.name,
-      });
-    }
-
-    if (data.type === 'thread-delete' && typeof data.threadId === 'string') {
-      this.threadDeleteHandler?.(data.threadId);
-    }
-
-    if (
-      data.type === 'thread-archive' &&
-      typeof data.threadId === 'string' &&
-      typeof data.archived === 'boolean'
-    ) {
-      this.threadArchiveHandler?.({ threadId: data.threadId, archived: data.archived });
     }
   }
 

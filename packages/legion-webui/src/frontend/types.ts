@@ -1,17 +1,8 @@
-export interface Workdir {
-  id: string;
-  provider: string;
-  name: string;
-  path: string;
-  defaultAgent?: string;
-}
-
 export interface Session {
   id: string;
   provider: string;
   name: string;
-  workdirId: string;
-  type: 'main' | 'thread';
+  path: string;
   agent: string;
   status: 'idle' | 'running' | 'error';
 }
@@ -20,6 +11,5 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  channelId: string;
-  threadId?: string;
+  sessionId: string;
 }

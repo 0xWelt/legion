@@ -1,22 +1,17 @@
 <script setup lang="ts">
-import type { Workdir, Session } from '../types.js';
+import type { Session } from '../types.js';
 
 defineProps<{
-  workdirs: Workdir[];
   sessions: Session[];
-  activeWorkdir: string | null;
   activeSession: string | null;
   currentView: 'chat' | 'status' | 'settings';
 }>();
 
 const emit = defineEmits<{
-  (e: 'select-session', workdirId: string, sessionId?: string): void;
+  (e: 'select-session', sessionId: string): void;
+  (e: 'create-session'): void;
   (e: 'switch-view', view: 'chat' | 'status' | 'settings'): void;
 }>();
-
-function sessionsFor(workdirId: string, list: Session[]) {
-  return list.filter((s) => s.workdirId === workdirId);
-}
 
 function statusClass(status: string): string {
   return `status-${status}`;
@@ -48,33 +43,23 @@ function statusClass(status: string): string {
     </nav>
 
     <div v-if="currentView === 'chat'" class="chat-sidebar">
-      <div class="section-title">Conversations</div>
-      <div class="workdir-list">
+      <div class="section-header">
+        <div class="section-title">Conversations</div>
+        <button class="new-btn" @click="emit('create-session')">+ New</button>
+      </div>
+      <div class="session-list">
         <div
-          v-for="workdir in workdirs"
-          :key="workdir.id"
-          class="workdir"
-          :data-workdir-id="workdir.id"
-          :class="{ active: activeWorkdir === workdir.id && !activeSession }"
-          @click="emit('select-session', workdir.id)"
+          v-for="session in sessions"
+          :key="session.id"
+          class="session"
+          :data-session-id="session.id"
+          :class="{ active: activeSession === session.id }"
+          @click="emit('select-session', session.id)"
         >
-          <div class="workdir-header">
-            <div class="workdir-name">{{ workdir.name }}</div>
-            <div class="workdir-path" :title="workdir.path">{{ workdir.path }}</div>
-          </div>
-
-          <div class="session-list">
-            <div
-              v-for="session in sessionsFor(workdir.id, sessions)"
-              :key="session.id"
-              class="session"
-              :data-session-id="session.id"
-              :class="{ active: activeSession === session.id }"
-              @click.stop="emit('select-session', workdir.id, session.id)"
-            >
-              <span class="session-name">{{ session.name }}</span>
-              <span class="status" :class="statusClass(session.status)">{{ session.status }}</span>
-            </div>
+          <div class="session-name">{{ session.name }}</div>
+          <div class="session-meta">
+            <span class="agent">{{ session.agent }}</span>
+            <span class="status" :class="statusClass(session.status)">{{ session.status }}</span>
           </div>
         </div>
       </div>
@@ -160,31 +145,48 @@ function statusClass(status: string): string {
   min-height: 0;
 }
 
-.section-title {
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 16px 4px;
+}
+.section-title {
   font-size: 11px;
   font-weight: 600;
   color: #8b949e;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.new-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.new-btn:hover {
+  background: #30363d;
+}
 
-.workdir-list {
+.session-list {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
 }
-.workdir-list::-webkit-scrollbar {
+.session-list::-webkit-scrollbar {
   width: 6px;
 }
-.workdir-list::-webkit-scrollbar-track {
+.session-list::-webkit-scrollbar-track {
   background: transparent;
 }
-.workdir-list::-webkit-scrollbar-thumb {
+.session-list::-webkit-scrollbar-thumb {
   background: #30363d;
   border-radius: 3px;
 }
-.workdir {
+.session {
   padding: 10px;
   border-radius: 8px;
   cursor: pointer;
@@ -192,57 +194,32 @@ function statusClass(status: string): string {
   transition: background 0.15s ease;
   border: 1px solid transparent;
 }
-.workdir:hover {
+.session:hover {
   background: #21262d;
 }
-.workdir.active {
+.session.active {
   background: rgba(31, 111, 235, 0.1);
   border-color: rgba(31, 111, 235, 0.3);
 }
-.workdir-header {
-  margin-bottom: 6px;
-}
-.workdir-name {
+.session-name {
   font-weight: 600;
   font-size: 14px;
   color: #e6edf3;
   word-break: break-all;
 }
-.workdir-path {
-  font-size: 11px;
-  color: #6e7681;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.session-list {
-  padding-left: 8px;
+.session-meta {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.session {
-  padding: 5px 8px;
-  border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 13px;
-  transition: background 0.15s ease;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
 }
-.session:hover {
-  background: #30363d;
-}
-.session.active {
-  background: #30363d;
-  font-weight: 500;
-}
-.session-name {
-  color: #c9d1d9;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.agent {
+  font-size: 11px;
+  color: #58a6ff;
+  background: rgba(31, 111, 235, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 .status {
   font-size: 10px;

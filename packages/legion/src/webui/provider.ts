@@ -5,7 +5,6 @@ import type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   IMEmbed,
   RenderState,
 } from '@0xwelt/legion-api';
@@ -16,9 +15,6 @@ export class WebUIProvider implements IMProvider {
   readonly name = 'webui';
 
   private messageHandler?: (msg: IMMessage) => void | Promise<void>;
-  private threadCreateHandler?: (thread: IMThread) => void | Promise<void>;
-  private threadDeleteHandler?: (threadId: string) => void | Promise<void>;
-  private threadArchiveHandler?: (threadId: string, archived: boolean) => void | Promise<void>;
 
   constructor(
     private readonly config: WebUIConfig,
@@ -32,37 +28,16 @@ export class WebUIProvider implements IMProvider {
 
   async start(): Promise<void> {
     this.server.onMessage((payload) => {
-      const { channelId, threadId, content, authorName, authorId } = payload;
-      const msg: IMMessage = {
+      const imMsg: IMMessage = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         provider: this.name,
-        channelId,
-        threadId,
-        authorId: authorId ?? 'user',
-        authorName: authorName ?? 'User',
-        content,
+        sessionId: payload.sessionId,
+        authorId: payload.authorId ?? 'user',
+        authorName: payload.authorName ?? 'User',
+        content: payload.content,
         createdAt: new Date(),
       };
-      void this.messageHandler?.(msg);
-    });
-
-    this.server.onThreadCreate((payload) => {
-      const thread: IMThread = {
-        id: payload.threadId,
-        provider: this.name,
-        channelId: payload.channelId,
-        name: payload.name,
-        createdAt: new Date(),
-      };
-      void this.threadCreateHandler?.(thread);
-    });
-
-    this.server.onThreadDelete((threadId) => {
-      void this.threadDeleteHandler?.(threadId);
-    });
-
-    this.server.onThreadArchive((payload) => {
-      void this.threadArchiveHandler?.(payload.threadId, payload.archived);
+      void this.messageHandler?.(imMsg);
     });
 
     await this.server.start(
@@ -76,23 +51,10 @@ export class WebUIProvider implements IMProvider {
     this.messageHandler = handler;
   }
 
-  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
-    this.threadCreateHandler = handler;
-  }
-
-  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
-    this.threadDeleteHandler = handler;
-  }
-
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
-    this.threadArchiveHandler = handler;
-  }
-
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
     const ref: IMMessageRef = {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     this.server.broadcast({
@@ -115,8 +77,7 @@ export class WebUIProvider implements IMProvider {
   async sendEmbed(target: IMTarget, embed: IMEmbed): Promise<IMMessageRef> {
     const ref: IMMessageRef = {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     this.server.broadcast({

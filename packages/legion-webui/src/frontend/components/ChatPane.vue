@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue';
 import MessageItem from './MessageItem.vue';
-import type { Workdir, Session, ChatMessage } from '../types.js';
+import type { Session, ChatMessage } from '../types.js';
 
 const props = defineProps<{
-  workdir?: Workdir;
   session?: Session;
   messages: ChatMessage[];
 }>();
@@ -16,7 +15,7 @@ const emit = defineEmits<{
 const input = ref('');
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const messagesContainer = ref<HTMLDivElement | null>(null);
-const disabled = computed(() => !props.workdir);
+const disabled = computed(() => !props.session);
 
 function submit() {
   const text = input.value.trim();
@@ -55,27 +54,23 @@ watch(
 <template>
   <div class="chat-pane">
     <header class="chat-header">
-      <div class="title">{{ session?.name ?? workdir?.name ?? 'Select a session' }}</div>
+      <div class="title">{{ session?.name ?? 'Select or create a session' }}</div>
       <div v-if="session" class="meta">
         <span class="badge">{{ session.agent }}</span>
-        <span v-if="workdir">{{ workdir.name }}</span>
+        <span v-if="session.path" class="path" :title="session.path">{{ session.path }}</span>
       </div>
     </header>
 
     <div ref="messagesContainer" class="messages">
-      <div v-if="!workdir" class="empty">
+      <div v-if="!session" class="empty">
         <div class="empty-icon">💬</div>
-        <div class="empty-title">Select a workdir or session from the sidebar.</div>
-        <div class="empty-sub">Start a conversation with your coding agent.</div>
+        <div class="empty-title">Select a session from the sidebar or start a new one.</div>
+        <div class="empty-sub">
+          Each session is an independent chat with its own workdir and agent.
+        </div>
       </div>
       <template v-else>
-        <MessageItem
-          v-for="msg in messages"
-          :key="msg.id"
-          :message="msg"
-          :session="session"
-          :workdir="workdir"
-        />
+        <MessageItem v-for="msg in messages" :key="msg.id" :message="msg" :session="session" />
       </template>
     </div>
 
@@ -133,6 +128,12 @@ watch(
   color: #58a6ff;
   font-size: 11px;
   font-weight: 600;
+}
+.path {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .messages {

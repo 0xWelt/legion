@@ -5,7 +5,7 @@ import ChatPane from './components/ChatPane.vue';
 import StatusView from './views/StatusView.vue';
 import SettingsView from './views/SettingsView.vue';
 import { useWebSocket } from './composables/useWebSocket.js';
-import type { Workdir, Session, ChatMessage } from './types.js';
+import type { Session, ChatMessage } from './types.js';
 
 type AgentEvent =
   | { type: 'text'; text?: string; delta?: string }
@@ -28,21 +28,14 @@ interface OutputSegment {
 }
 
 const view = ref<'chat' | 'status' | 'settings'>('chat');
-const activeWorkdir = ref<string | null>(null);
 const activeSession = ref<string | null>(null);
-const workdirs = ref<Workdir[]>([]);
 const sessions = ref<Session[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const sessionOutputs = ref<Record<string, OutputSegment[]>>({});
 
-const webuiWorkdirs = computed(() => workdirs.value.filter((w) => w.provider === 'webui'));
 const webuiSessions = computed(() => sessions.value.filter((s) => s.provider === 'webui'));
 
 const ws = useWebSocket();
-
-function sessionKey(channelId: string, threadId?: string): string {
-  return threadId ? `${channelId}:${threadId}` : channelId;
-}
 
 function renderSegment(seg: OutputSegment): string {
   switch (seg.type) {
@@ -138,45 +131,25 @@ function applyAgentEvent(segments: OutputSegment[], event: AgentEvent): void {
   }
 }
 
-function upsertMessage(
-  id: string,
-  role: ChatMessage['role'],
-  content: string,
-  channelId: string,
-  threadId?: string
-) {
+function upsertMessage(id: string, role: ChatMessage['role'], content: string, sessionId: string) {
   const existing = messages.value.find((m) => m.id === id);
   if (existing) {
     existing.content = content;
   } else {
-    messages.value.push({ id, role, content, channelId, threadId });
+    messages.value.push({ id, role, content, sessionId });
   }
 }
 
 onMounted(async () => {
   const res = await fetch('/api/state');
   if (res.ok) {
-    const data = (await res.json()) as { workdirs: Workdir[]; sessions: Session[] };
-    workdirs.value = data.workdirs ?? [];
+    const data = (await res.json()) as { sessions: Session[] };
     sessions.value = data.sessions ?? [];
   }
 
-  ws.on(
-    'text',
-    (payload: {
-      target: { channelId: string; threadId?: string };
-      text: string;
-      messageId: string;
-    }) => {
-      upsertMessage(
-        payload.messageId,
-        'assistant',
-        payload.text,
-        payload.target.channelId,
-        payload.target.threadId
-      );
-    }
-  );
+  ws.on('text', (payload: { target: { sessionId: string }; text: string; messageId: string }) => {
+    upsertMessage(payload.messageId, 'assistant', payload.text, payload.target.sessionId);
+  });
 
   ws.on('edit-text', (payload: { ref: { messageId: string }; text: string }) => {
     const existing = messages.value.find((m) => m.id === payload.ref.messageId);
@@ -185,49 +158,43 @@ onMounted(async () => {
     }
   });
 
-  ws.on(
-    'agent-event',
-    (payload: { target: { channelId: string; threadId?: string }; event: AgentEvent }) => {
-      const key = sessionKey(payload.target.channelId, payload.target.threadId);
-      const segments = sessionOutputs.value[key] ?? [];
-      applyAgentEvent(segments, payload.event);
-      sessionOutputs.value[key] = segments;
+  ws.on('agent-event', (payload: { target: { sessionId: string }; event: AgentEvent }) => {
+    const key = payload.target.sessionId;
+    const segments = sessionOutputs.value[key] ?? [];
+    applyAgentEvent(segments, payload.event);
+    sessionOutputs.value[key] = segments;
 
-      const content = renderOutput(segments);
-      if (!content) return;
+    const content = renderOutput(segments);
+    if (!content) return;
 
-      const messageId = `agent-${key}`;
-      upsertMessage(
-        messageId,
-        'assistant',
-        content,
-        payload.target.channelId,
-        payload.target.threadId
-      );
-    }
-  );
+    const messageId = `agent-${key}`;
+    upsertMessage(messageId, 'assistant', content, payload.target.sessionId);
+  });
 });
 
+function createSession() {
+  const sessionId = `webui-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  activeSession.value = sessionId;
+  view.value = 'chat';
+}
+
 function send(content: string) {
-  if (!activeWorkdir.value) return;
+  if (!activeSession.value) return;
   ws.send({
     type: 'message',
-    channelId: activeWorkdir.value,
-    threadId: activeSession.value ?? undefined,
+    sessionId: activeSession.value,
     content,
   });
   messages.value.push({
     id: `${Date.now()}`,
     role: 'user',
     content,
-    channelId: activeWorkdir.value,
-    threadId: activeSession.value ?? undefined,
+    sessionId: activeSession.value,
   });
 }
 
-function selectSession(workdirId: string, sessionId?: string) {
-  activeWorkdir.value = workdirId;
-  activeSession.value = sessionId ?? null;
+function selectSession(sessionId: string) {
+  activeSession.value = sessionId;
   view.value = 'chat';
 }
 </script>
@@ -235,26 +202,18 @@ function selectSession(workdirId: string, sessionId?: string) {
 <template>
   <div class="app-shell">
     <Sidebar
-      :workdirs="webuiWorkdirs"
       :sessions="webuiSessions"
-      :active-workdir="activeWorkdir"
       :active-session="activeSession"
       :current-view="view"
       @select-session="selectSession"
+      @create-session="createSession"
       @switch-view="view = $event"
     />
     <main class="main">
       <ChatPane
         v-if="view === 'chat'"
-        :workdir="webuiWorkdirs.find((w) => w.id === activeWorkdir)"
         :session="webuiSessions.find((s) => s.id === activeSession)"
-        :messages="
-          messages.filter(
-            (m) =>
-              m.channelId === activeWorkdir &&
-              (activeSession ? m.threadId === activeSession : !m.threadId)
-          )
-        "
+        :messages="messages.filter((m) => m.sessionId === activeSession)"
         @send="send"
       />
       <StatusView v-else-if="view === 'status'" />
