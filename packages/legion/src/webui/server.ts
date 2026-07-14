@@ -86,6 +86,7 @@ function parseJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export interface ServerOptions {
+  provider?: string;
   authToken?: string;
   serviceManager?: ServiceManager;
   stateStorePath?: string;
@@ -253,7 +254,22 @@ export class WebUIServer {
     if (!this.options.stateStorePath) return { workdirs: [], sessions: [] };
     try {
       const data = await readFile(expandHome(this.options.stateStorePath), 'utf8');
-      return parseState(JSON.parse(data));
+      const { workdirs, sessions } = parseState(JSON.parse(data));
+      const provider = this.options.provider ?? 'webui';
+      return {
+        workdirs: workdirs.filter(
+          (w) =>
+            typeof w === 'object' &&
+            w !== null &&
+            (w as Record<string, unknown>).provider === provider
+        ),
+        sessions: sessions.filter(
+          (s) =>
+            typeof s === 'object' &&
+            s !== null &&
+            (s as Record<string, unknown>).provider === provider
+        ),
+      };
     } catch {
       return { workdirs: [], sessions: [] };
     }

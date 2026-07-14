@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import Sidebar from './components/Sidebar.vue';
 import ChatPane from './components/ChatPane.vue';
 import StatusView from './views/StatusView.vue';
@@ -34,6 +34,9 @@ const workdirs = ref<Workdir[]>([]);
 const sessions = ref<Session[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const sessionOutputs = ref<Record<string, OutputSegment[]>>({});
+
+const webuiWorkdirs = computed(() => workdirs.value.filter((w) => w.provider === 'webui'));
+const webuiSessions = computed(() => sessions.value.filter((s) => s.provider === 'webui'));
 
 const ws = useWebSocket();
 
@@ -232,8 +235,8 @@ function selectSession(workdirId: string, sessionId?: string) {
 <template>
   <div class="app-shell">
     <Sidebar
-      :workdirs="workdirs"
-      :sessions="sessions"
+      :workdirs="webuiWorkdirs"
+      :sessions="webuiSessions"
       :active-workdir="activeWorkdir"
       :active-session="activeSession"
       :current-view="view"
@@ -243,8 +246,8 @@ function selectSession(workdirId: string, sessionId?: string) {
     <main class="main">
       <ChatPane
         v-if="view === 'chat'"
-        :workdir="workdirs.find((w) => w.id === activeWorkdir)"
-        :session="sessions.find((s) => s.id === activeSession)"
+        :workdir="webuiWorkdirs.find((w) => w.id === activeWorkdir)"
+        :session="webuiSessions.find((s) => s.id === activeSession)"
         :messages="
           messages.filter(
             (m) =>

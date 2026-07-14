@@ -1,5 +1,6 @@
 export interface Workdir {
   id: string;
+  provider: string;
   name: string;
   path: string;
   defaultAgent?: string;
@@ -7,6 +8,7 @@ export interface Workdir {
 
 export interface Session {
   id: string;
+  provider: string;
   name: string;
   workdirId: string;
   type: 'main' | 'thread';

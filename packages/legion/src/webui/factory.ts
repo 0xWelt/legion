@@ -15,6 +15,7 @@ export interface CreateWebUIProviderOptions {
 
 export function createWebUIProvider(options: CreateWebUIProviderOptions): WebUIProvider {
   const server = new WebUIServer({
+    provider: 'webui',
     authToken: options.config.authToken,
     serviceManager: options.serviceManager,
     stateStorePath: options.stateStorePath,
