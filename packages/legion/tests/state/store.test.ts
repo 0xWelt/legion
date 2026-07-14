@@ -18,43 +18,40 @@ describe('JsonStateStore', () => {
   it('returns empty state when file does not exist', async () => {
     const store = new JsonStateStore({ path: join(tempDir, 'missing.json') });
     const state = await store.load();
-    expect(state.workdirs).toEqual({});
     expect(state.sessions).toEqual({});
   });
 
-  it('saves and loads state', async () => {
+  it('saves and loads flat session state', async () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     await store.save({
-      workdirs: {
+      sessions: {
         '1': {
           id: '1',
           provider: 'test',
           name: 'repo-a',
           path: '/tmp/repo-a',
-          defaultAgent: 'kimi',
+          agent: 'kimi',
+          status: 'idle',
           createdAt: '2026-01-01T00:00:00Z',
+          lastUsedAt: '2026-01-01T00:00:00Z',
         },
       },
-      sessions: {},
     });
 
     const loaded = await store.load();
-    expect(loaded.workdirs['1'].name).toBe('repo-a');
+    expect(loaded.sessions['1'].path).toBe('/tmp/repo-a');
+    expect(loaded.sessions['1'].agent).toBe('kimi');
   });
 
-  it('migrates legacy workspaces and session workspaceId on load', async () => {
+  it('migrates legacy workdirs into flat sessions', async () => {
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
     await writeFile(
       join(tempDir, 'state.json'),
       JSON.stringify({
-        workspaces: {
+        workdirs: {
           '1': {
-            id: '1',
-            provider: 'legacy',
-            name: 'repo-a',
-            workdir: '/tmp/repo-a',
+            path: '/tmp/repo-a',
             defaultAgent: 'kimi-code',
-            createdAt: '2026-01-01T00:00:00Z',
           },
         },
         sessions: {
@@ -62,8 +59,7 @@ describe('JsonStateStore', () => {
             id: 's1',
             provider: 'legacy',
             name: 'main',
-            workspaceId: '1',
-            type: 'main',
+            workdirId: '1',
             agent: 'kimi-code',
             status: 'idle',
             createdAt: '2026-01-01T00:00:00Z',
@@ -75,7 +71,6 @@ describe('JsonStateStore', () => {
     );
 
     const loaded = await store.load();
-    expect(loaded.workdirs['1'].path).toBe('/tmp/repo-a');
-    expect(loaded.sessions['s1'].workdirId).toBe('1');
+    expect(loaded.sessions['s1'].path).toBe('/tmp/repo-a');
   });
 });

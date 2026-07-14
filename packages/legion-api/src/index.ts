@@ -27,7 +27,6 @@ export type {
   ToolCallEvent,
   ToolResultEvent,
   UsageEvent,
-  Workdir,
 } from './core/types.js';
 export type { AgentEvent, SessionInitEvent } from './core/types.js';
 export {
@@ -46,7 +45,6 @@ export type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   RenderState,
 } from './im/types.js';
 export type { JsonStateStoreOptions, StateStore } from './state/store.js';

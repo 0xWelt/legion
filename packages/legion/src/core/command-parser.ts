@@ -1,6 +1,6 @@
 export { COMMAND_DEFINITIONS } from '@0xwelt/legion-api';
 
-export type AgentScope = 'global' | 'workdir' | 'session';
+export type AgentScope = 'global' | 'session';
 
 export type Command =
   | { type: 'workdir'; path?: string }
@@ -25,8 +25,6 @@ export class CommandParser {
       for (const token of tokens) {
         if (token === '--global' || token === '-g') {
           scope = 'global';
-        } else if (token === '--workdir' || token === '-w') {
-          scope = 'workdir';
         } else if (token === '--session' || token === '-s') {
           scope = 'session';
         } else if (!name) {

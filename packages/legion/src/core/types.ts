@@ -10,5 +10,4 @@ export type {
   ToolCallEvent,
   ToolResultEvent,
   UsageEvent,
-  Workdir,
 } from '@0xwelt/legion-api';

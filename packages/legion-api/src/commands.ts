@@ -27,10 +27,9 @@ export const COMMAND_DEFINITIONS: IMCommandDefinition[] = [
       },
       {
         name: 'scope',
-        description:
-          '作用域：global（全局）、workdir（当前 workdir）、session（当前 session，默认）',
+        description: '作用域：global（全局）、session（当前 session，默认）',
         required: false,
-        choices: ['global', 'workdir', 'session'],
+        choices: ['global', 'session'],
       },
     ],
   },

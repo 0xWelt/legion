@@ -8,7 +8,6 @@ import type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   RenderState,
 } from '@0xwelt/legion-api';
 import { applyEvent, buildCard, createInitialState, type CardState } from './card-builder.js';
@@ -21,14 +20,13 @@ export class LarkProvider implements IMProvider {
   private readonly client: lark.Client;
   private readonly eventDispatcher: lark.EventDispatcher;
   private messageHandlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
-  private threadCreateHandlers: Array<(thread: IMThread) => void | Promise<void>> = [];
-  private threadDeleteHandlers: Array<(threadId: string) => void | Promise<void>> = [];
-  private threadArchiveHandlers: Array<
-    (threadId: string, archived: boolean) => void | Promise<void>
-  > = [];
   private server?: http.Server;
   private wsClient?: lark.WSClient;
   private readonly cardStates = new Map<string, CardState>();
+  // Flat session model: a thread may become its own session, but Lark still
+  // needs the parent chat_id to send messages. We keep this mapping internal
+  // to the provider so the core model stays simple.
+  private readonly sessionChatIds = new Map<string, string>();
 
   constructor(private readonly options: LarkProviderOptions) {
     this.client =
@@ -78,18 +76,6 @@ export class LarkProvider implements IMProvider {
     this.messageHandlers.push(handler);
   }
 
-  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
-    this.threadCreateHandlers.push(handler);
-  }
-
-  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
-    this.threadDeleteHandlers.push(handler);
-  }
-
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
-    this.threadArchiveHandlers.push(handler);
-  }
-
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
     const content = JSON.stringify({ text: text.trim().slice(0, 3000) });
     const messageId = await this.sendMessage(target, 'text', content);
@@ -116,7 +102,7 @@ export class LarkProvider implements IMProvider {
   }
 
   async renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState> {
-    const sessionKey = target.channelId;
+    const sessionKey = target.sessionId;
     let cardState = this.cardStates.get(sessionKey) ?? createInitialState();
     cardState = applyEvent(cardState, event);
     this.cardStates.set(sessionKey, cardState);
@@ -142,9 +128,17 @@ export class LarkProvider implements IMProvider {
     if (!message) {
       return;
     }
-    if (this.options.allowedChatIds && !this.options.allowedChatIds.includes(message.channelId)) {
+
+    // Remember the parent chat_id for this session so outbound sends can use it.
+    const chatId = data.event?.message?.chat_id;
+    if (chatId) {
+      this.sessionChatIds.set(message.sessionId, chatId);
+    }
+
+    if (this.options.allowedChatIds && chatId && !this.options.allowedChatIds.includes(chatId)) {
       return;
     }
+
     for (const handler of this.messageHandlers) {
       await handler(message);
     }
@@ -154,12 +148,13 @@ export class LarkProvider implements IMProvider {
     if (target.replyToMessageId) {
       return this.replyMessage(target.replyToMessageId, msgType, content);
     }
+    const receiveId = this.sessionChatIds.get(target.sessionId) ?? target.sessionId;
     const response = await this.client.request<LarkCreateMessageResponse>({
       method: 'POST',
       url: 'https://open.feishu.cn/open-apis/im/v1/messages',
       params: { receive_id_type: 'chat_id' },
       data: {
-        receive_id: target.channelId,
+        receive_id: receiveId,
         msg_type: msgType,
         content,
       },
@@ -201,8 +196,7 @@ export class LarkProvider implements IMProvider {
   private toRef(target: IMTarget, messageId: string): IMMessageRef {
     return {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId,
     };
   }

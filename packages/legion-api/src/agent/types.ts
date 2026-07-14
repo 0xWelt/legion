@@ -12,7 +12,6 @@ export interface SessionContext {
   workdir: string;
   agentSessionId?: string;
   model?: string;
-  threadName?: string;
 }
 
 export interface AgentRunnerFactory {

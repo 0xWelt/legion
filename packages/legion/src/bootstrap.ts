@@ -40,7 +40,7 @@ function buildCommandDefinitions(agents: string[]): IMCommandDefinition[] {
           return { ...option, choices: agents };
         }
         if (option.name === 'scope') {
-          return { ...option, choices: ['global', 'workdir', 'session'] };
+          return { ...option, choices: ['global', 'session'] };
         }
         return option;
       }),

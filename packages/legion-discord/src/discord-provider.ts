@@ -26,7 +26,6 @@ import type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   OutputSegment,
   RenderState,
 } from '@0xwelt/legion-api';
@@ -35,11 +34,6 @@ export class DiscordProvider implements IMProvider {
   readonly name = 'discord';
   private readonly client: Client;
   private messageHandlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
-  private threadCreateHandlers: Array<(thread: IMThread) => void | Promise<void>> = [];
-  private threadDeleteHandlers: Array<(threadId: string) => void | Promise<void>> = [];
-  private threadArchiveHandlers: Array<
-    (threadId: string, archived: boolean) => void | Promise<void>
-  > = [];
   private toolNames = new Map<string, string>();
   private pendingInteractions = new Map<string, ChatInputCommandInteraction>();
   private commandDefinitions: IMCommandDefinition[] = [];
@@ -68,13 +62,10 @@ export class DiscordProvider implements IMProvider {
       if (msg.system) return;
       if (msg.guildId !== this.options.allowedGuildId) return;
 
-      const isThread = msg.channel.isThread();
-      const parentId = isThread ? (msg.channel as ThreadChannel).parentId : null;
       const imMsg: IMMessage = {
         id: msg.id,
         provider: this.name,
-        channelId: isThread && parentId ? parentId : msg.channelId,
-        threadId: isThread ? msg.channelId : undefined,
+        sessionId: msg.channelId,
         authorId: msg.author.id,
         authorName: msg.author.username,
         content: msg.content,
@@ -90,36 +81,6 @@ export class DiscordProvider implements IMProvider {
       if (channel.guildId !== this.options.allowedGuildId) return;
       if (!channel.isTextBased() || channel.isThread()) return;
       void (channel as TextChannel).send(this.buildWorkspaceGuide());
-    });
-
-    this.client.on('threadCreate', (thread) => {
-      if (thread.guildId !== this.options.allowedGuildId) return;
-      const imThread: IMThread = {
-        id: thread.id,
-        provider: this.name,
-        channelId: thread.parentId ?? '',
-        name: thread.name,
-        createdAt: thread.createdAt ?? new Date(),
-      };
-      for (const handler of this.threadCreateHandlers) {
-        void handler(imThread);
-      }
-    });
-
-    this.client.on('threadDelete', (thread) => {
-      if (thread.guildId !== this.options.allowedGuildId) return;
-      for (const handler of this.threadDeleteHandlers) {
-        void handler(thread.id);
-      }
-    });
-
-    this.client.on('threadUpdate', (oldThread, newThread) => {
-      if (newThread.guildId !== this.options.allowedGuildId) return;
-      if (oldThread.archived !== newThread.archived) {
-        for (const handler of this.threadArchiveHandlers) {
-          void handler(newThread.id, newThread.archived ?? false);
-        }
-      }
     });
 
     this.client.on('interactionCreate', (interaction) =>
@@ -158,15 +119,10 @@ export class DiscordProvider implements IMProvider {
     const content = buildCommandContent(interaction, this.commandDefinitions);
     if (!content) return;
 
-    const channel = interaction.channel;
-    const isThread = channel?.isThread();
-    const parentId = isThread ? (channel as ThreadChannel).parentId : null;
-
     const imMsg: IMMessage = {
       id: interaction.id,
       provider: this.name,
-      channelId: isThread && parentId ? parentId : interaction.channelId,
-      threadId: isThread ? interaction.channelId : undefined,
+      sessionId: interaction.channelId,
       authorId: interaction.user.id,
       authorName: interaction.user.username,
       content,
@@ -192,18 +148,6 @@ export class DiscordProvider implements IMProvider {
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
     this.messageHandlers.push(handler);
-  }
-
-  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
-    this.threadCreateHandlers.push(handler);
-  }
-
-  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
-    this.threadDeleteHandlers.push(handler);
-  }
-
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
-    this.threadArchiveHandlers.push(handler);
   }
 
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
@@ -561,7 +505,7 @@ export class DiscordProvider implements IMProvider {
   }
 
   async sendTyping(target: IMTarget): Promise<void> {
-    const key = this.targetKey(target);
+    const key = target.sessionId;
     if (this.typingIntervals.has(key)) {
       return;
     }
@@ -582,16 +526,12 @@ export class DiscordProvider implements IMProvider {
   }
 
   private stopTyping(target: IMTarget): void {
-    const key = this.targetKey(target);
+    const key = target.sessionId;
     const interval = this.typingIntervals.get(key);
     if (interval) {
       clearInterval(interval);
       this.typingIntervals.delete(key);
     }
-  }
-
-  private targetKey(target: IMTarget): string {
-    return target.threadId ?? target.channelId;
   }
 
   async renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState> {
@@ -629,9 +569,9 @@ export class DiscordProvider implements IMProvider {
   }
 
   private async resolveChannel(target: IMTarget): Promise<TextChannel | ThreadChannel> {
-    const channel = await this.client.channels.fetch(target.threadId ?? target.channelId);
+    const channel = await this.client.channels.fetch(target.sessionId);
     if (!channel || (!channel.isTextBased() && !channel.isThread())) {
-      throw new Error(`Channel not found: ${target.threadId ?? target.channelId}`);
+      throw new Error(`Channel not found: ${target.sessionId}`);
     }
     return channel as TextChannel | ThreadChannel;
   }
@@ -639,8 +579,7 @@ export class DiscordProvider implements IMProvider {
   private toRef(target: IMTarget, messageId: string): IMMessageRef {
     return {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId,
     };
   }
@@ -671,8 +610,7 @@ export class DiscordProvider implements IMProvider {
     return [
       '欢迎来到新的 workdir！',
       '- 绑定项目目录：`/workdir <path>`',
-      '- 在当前频道直接发消息，即与主 Session 对话',
-      '- 需要独立上下文时，右键消息 → 创建 Thread',
+      '- 在当前会话直接发消息，即可与 Agent 对话',
       '- 查看可用命令：`/help`',
     ].join('\n');
   }

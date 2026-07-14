@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { DefaultAgentRunnerFactory } from '@0xwelt/legion-api';
 import { InMemorySessionManager } from '../../src/core/session-manager.js';
 import { LegionMessageRouter } from '../../src/core/message-router.js';
-import { InMemoryWorkdirManager } from '../../src/core/workdir-manager.js';
-import type { IMMessage, IMThread } from '../../src/im/types.js';
+import type { IMMessage } from '../../src/im/types.js';
 
 function makeMsg(overrides: Partial<IMMessage> = {}): IMMessage {
   return {
     id: 'msg-1',
     provider: 'discord',
-    channelId: 'channel-1',
+    sessionId: 'session-1',
     authorId: 'user-1',
     authorName: 'tester',
     content: 'hello',
@@ -18,68 +17,50 @@ function makeMsg(overrides: Partial<IMMessage> = {}): IMMessage {
   };
 }
 
-function makeThread(overrides: Partial<IMThread> = {}): IMThread {
-  return {
-    id: 'thread-1',
-    provider: 'discord',
-    channelId: 'channel-1',
-    name: 'fix-bug',
-    createdAt: new Date(),
-    ...overrides,
-  };
-}
-
 describe('LegionMessageRouter', () => {
-  function makeRouter(workdirs: InMemoryWorkdirManager, sessions: InMemorySessionManager) {
+  function makeRouter(sessions: InMemorySessionManager) {
     const factory = new DefaultAgentRunnerFactory();
     return new LegionMessageRouter({
-      workdirManager: workdirs,
       sessionManager: sessions,
       runnerFactory: factory,
       defaultAgent: 'kimi-code',
     });
   }
 
-  it('returns prompt route when workdir bound', async () => {
-    const workdirs = new InMemoryWorkdirManager();
+  it('returns prompt route when session has path', async () => {
     const sessions = new InMemorySessionManager();
-    const router = makeRouter(workdirs, sessions);
+    const router = makeRouter(sessions);
 
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a', 'kimi-code');
+    const session = sessions.create('session-1', 'discord', 'main', 'kimi-code');
+    sessions.setPath(session.id, '/tmp/repo-a');
 
     const route = await router.route(makeMsg({ content: 'write tests' }));
     expect(route.type).toBe('prompt');
     expect(route.prompt).toBe('write tests');
-    expect(route.session.workdirId).toBe('channel-1');
     expect(route.session.provider).toBe('discord');
     expect(route.session.agent).toBe('kimi-code');
   });
 
   it('returns command route for /workdir', async () => {
-    const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    const router = makeRouter(workdirs, sessions);
-
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a', 'kimi-code');
+    const router = makeRouter(sessions);
 
     const route = await router.route(makeMsg({ content: '/workdir /tmp/repo-b' }));
     expect(route.type).toBe('command');
     expect(route.command).toEqual({ type: 'workdir', path: '/tmp/repo-b' });
   });
 
-  it('rejects prompt when workdir not bound', async () => {
-    const workdirs = new InMemoryWorkdirManager();
+  it('rejects prompt when session has no path', async () => {
     const sessions = new InMemorySessionManager();
-    const router = makeRouter(workdirs, sessions);
+    const router = makeRouter(sessions);
 
     const route = await router.route(makeMsg({ content: 'hello' }));
     expect(route.response).toContain('尚未绑定 workdir');
   });
 
   it('allows /help before workdir is bound', async () => {
-    const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    const router = makeRouter(workdirs, sessions);
+    const router = makeRouter(sessions);
 
     const route = await router.route(makeMsg({ content: '/help' }));
     expect(route.type).toBe('command');
@@ -87,71 +68,32 @@ describe('LegionMessageRouter', () => {
     expect(route.response).toBeUndefined();
   });
 
-  it('creates thread session on thread create', async () => {
-    const workdirs = new InMemoryWorkdirManager();
+  it('reuses existing session', async () => {
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a', 'claude-code');
+    const router = makeRouter(sessions);
 
-    const router = makeRouter(workdirs, sessions);
+    const first = await router.route(makeMsg({ content: 'first' }));
+    sessions.setPath(first.session.id, '/tmp/repo');
 
-    await router.onThreadCreate(makeThread());
-    const session = sessions.get('thread-1');
-    expect(session).toBeDefined();
-    expect(session?.type).toBe('thread');
-    expect(session?.agent).toBe('claude-code');
-  });
-
-  it('inherits agent from global default when workdir defaultAgent is unset', async () => {
-    const workdirs = new InMemoryWorkdirManager();
-    const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a');
-
-    const router = makeRouter(workdirs, sessions);
-
-    const route = await router.route(makeMsg({ content: 'write tests' }));
-    expect(route.type).toBe('prompt');
-    expect(route.session.agent).toBe('kimi-code');
-  });
-
-  it('routes thread message to parent channel workdir', async () => {
-    const workdirs = new InMemoryWorkdirManager();
-    const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a', 'kimi-code');
-
-    const router = makeRouter(workdirs, sessions);
-
-    await router.onThreadCreate(makeThread());
-    const route = await router.route(
-      makeMsg({ channelId: 'channel-1', threadId: 'thread-1', content: 'fix it' })
-    );
-    expect(route.type).toBe('prompt');
-    expect(route.prompt).toBe('fix it');
-    expect(route.session.workdirId).toBe('channel-1');
-    expect(route.session.type).toBe('thread');
-    expect(route.session.agent).toBe('kimi-code');
+    const second = await router.route(makeMsg({ content: 'second' }));
+    expect(second.type).toBe('prompt');
+    expect(second.session.id).toBe(first.session.id);
   });
 
   it('keeps existing session agent when global default changes', async () => {
-    const workdirs = new InMemoryWorkdirManager();
     const sessions = new InMemorySessionManager();
-    workdirs.bind('channel-1', 'discord', 'repo-a', '/tmp/repo-a');
-
-    const routerOld = makeRouter(workdirs, sessions);
+    const routerOld = makeRouter(sessions);
     const first = await routerOld.route(makeMsg({ content: 'first' }));
-    expect(first.type).toBe('prompt');
     expect(first.session.agent).toBe('kimi-code');
 
-    // Simulate a config change: a new router is created with a different default agent.
     const factory = new DefaultAgentRunnerFactory();
     const routerNew = new LegionMessageRouter({
-      workdirManager: workdirs,
       sessionManager: sessions,
       runnerFactory: factory,
       defaultAgent: 'claude-code',
     });
 
     const second = await routerNew.route(makeMsg({ content: 'second' }));
-    expect(second.type).toBe('prompt');
     expect(second.session.agent).toBe('kimi-code');
     expect(second.session.id).toBe(first.session.id);
   });

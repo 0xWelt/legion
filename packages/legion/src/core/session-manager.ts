@@ -2,24 +2,13 @@ import type { Session } from './types.js';
 
 export interface SessionManager {
   get(id: string): Session | undefined;
-  createMain(
-    sessionId: string,
-    provider: string,
-    name: string,
-    workdirId: string,
-    agent: string
-  ): Session;
-  createThread(
-    sessionId: string,
-    provider: string,
-    name: string,
-    workdirId: string,
-    agent: string
-  ): Session;
+  create(sessionId: string, provider: string, name: string, agent: string): Session;
+  setPath(sessionId: string, path: string): void;
+  setAgent(sessionId: string, agent: string): void;
   setAgentSessionId(sessionId: string, agentSessionId: string): void;
   setStatus(sessionId: string, status: Session['status']): void;
   touch(sessionId: string): void;
-  listByWorkdir(workdirId: string): Session[];
+  list(): Session[];
 }
 
 export class InMemorySessionManager implements SessionManager {
@@ -35,28 +24,18 @@ export class InMemorySessionManager implements SessionManager {
     return this.sessions.get(id);
   }
 
-  createMain(
-    sessionId: string,
-    provider: string,
-    name: string,
-    workdirId: string,
-    agent: string
-  ): Session {
-    const session = this.makeSession(sessionId, provider, name, workdirId, 'main', agent);
+  create(sessionId: string, provider: string, name: string, agent: string): Session {
+    const session = this.makeSession(sessionId, provider, name, agent);
     this.sessions.set(sessionId, session);
     return session;
   }
 
-  createThread(
-    sessionId: string,
-    provider: string,
-    name: string,
-    workdirId: string,
-    agent: string
-  ): Session {
-    const session = this.makeSession(sessionId, provider, name, workdirId, 'thread', agent);
-    this.sessions.set(sessionId, session);
-    return session;
+  setPath(sessionId: string, path: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.path = path;
+      session.lastUsedAt = new Date().toISOString();
+    }
   }
 
   setAgent(sessionId: string, agent: string): void {
@@ -90,8 +69,8 @@ export class InMemorySessionManager implements SessionManager {
     }
   }
 
-  listByWorkdir(workdirId: string): Session[] {
-    return Array.from(this.sessions.values()).filter((s) => s.workdirId === workdirId);
+  list(): Session[] {
+    return Array.from(this.sessions.values());
   }
 
   load(state: Record<string, Session>): void {
@@ -102,21 +81,13 @@ export class InMemorySessionManager implements SessionManager {
     return Object.fromEntries(this.sessions);
   }
 
-  private makeSession(
-    sessionId: string,
-    provider: string,
-    name: string,
-    workdirId: string,
-    type: Session['type'],
-    agent: string
-  ): Session {
+  private makeSession(sessionId: string, provider: string, name: string, agent: string): Session {
     const now = new Date().toISOString();
     return {
       id: sessionId,
       provider,
       name,
-      workdirId,
-      type,
+      path: '',
       agent,
       status: 'idle',
       createdAt: now,

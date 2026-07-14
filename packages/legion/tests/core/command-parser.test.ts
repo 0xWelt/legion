@@ -46,14 +46,6 @@ describe('CommandParser', () => {
     });
   });
 
-  it('parses /agent --workdir without name', () => {
-    expect(parser.parse('/agent --workdir')).toEqual({
-      type: 'agent',
-      name: undefined,
-      scope: 'workdir',
-    });
-  });
-
   it('returns unknown for plain prompt', () => {
     expect(parser.parse('hello world')).toEqual({ type: 'unknown' });
   });
