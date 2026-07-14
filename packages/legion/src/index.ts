@@ -44,7 +44,9 @@ export type {
   IMProvider,
   IMTarget,
   RenderState,
-} from './im/types.js';
+  ServiceManager,
+  ServiceStatus,
+} from '@0xwelt/legion-api';
 export { JsonStateStore } from './state/store.js';
 export type { StateStore } from './state/store.js';
 export { ConsoleLogger } from './utils/logger.js';

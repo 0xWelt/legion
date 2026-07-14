@@ -102,6 +102,16 @@ legion gateway start
 git clone <仓库地址>
 cd legion
 vp install
+vp run dev:webui   # 同时启动后端 Gateway 与前端 Web UI dev server
+```
+
+- 后端 `tsx watch` 监听 `packages/` 下所有改动，地址 `http://127.0.0.1:18788`。
+- 前端 Vite dev server 地址 `http://127.0.0.1:5173`，并自动把 `/api` 与 `/ws` 代理到后端。
+- 浏览器访问 `http://127.0.0.1:5173` 即可使用完整 Web UI。
+
+如果只需要调试后端（不使用前端 dev server）：
+
+```bash
 vp run dev
 ```
 
@@ -110,7 +120,7 @@ vp run dev
 ```bash
 export LEGION_DISCORD_BOT_TOKEN="your-bot-token"
 export LEGION_DISCORD_ALLOWED_GUILD_ID="your-guild-id"
-vp run dev
+vp run dev:webui
 ```
 
 ### 3. 绑定工作目录
@@ -199,7 +209,8 @@ Legion 默认以各 runner 能达到的最高自动权限运行，不需要在�
 项目已迁移到 [Vite+](https://voidzero.dev/posts/announcing-vite-plus-alpha) 工具链，`vp` 是唯一的命令入口：
 
 ```bash
-vp run dev         # 开发运行
+vp run dev:webui   # 同时启动后端 Gateway 与前端 Web UI dev server
+vp run dev         # 仅启动后端 Gateway
 vp run -r build    # 构建所有 workspace 包
 vp check           # 格式化 + lint + 类型检查
 vp test            # 运行测试

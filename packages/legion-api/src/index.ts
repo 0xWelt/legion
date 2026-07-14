@@ -50,3 +50,4 @@ export type {
 } from './im/types.js';
 export type { JsonStateStoreOptions, StateStore } from './state/store.js';
 export type { Logger } from './utils/logger.js';
+export type { ServiceManager, ServiceStatus } from './daemon/service.js';

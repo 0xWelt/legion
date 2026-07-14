@@ -1,7 +1,7 @@
 import { detectServiceManager } from './systemd.js';
 
 export type { ServiceManager, ServiceStatus } from './service.js';
-export { SystemdServiceManager, isSystemdAvailable } from './systemd.js';
+export { detectServiceManager, SystemdServiceManager, isSystemdAvailable } from './systemd.js';
 export {
   buildDefaultUnitOptions,
   buildSystemdUnit,

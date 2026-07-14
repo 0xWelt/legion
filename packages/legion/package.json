@@ -24,8 +24,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node scripts/copy-webui-assets.mjs",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@0xwelt/legion-api": "workspace:*",
@@ -33,7 +36,10 @@
     "@0xwelt/legion-codex": "workspace:*",
     "@0xwelt/legion-discord": "workspace:*",
     "@0xwelt/legion-kimi-code": "workspace:*",
-    "@0xwelt/legion-lark": "workspace:*"
+    "@0xwelt/legion-lark": "workspace:*",
+    "@0xwelt/legion-webui": "workspace:*",
+    "@types/node": "^22.13.0",
+    "@types/ws": "^8.5.0"
   },
   "engines": {
     "node": ">=20.20.2"
