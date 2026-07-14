@@ -3,6 +3,7 @@ import type { Session } from './types.js';
 export interface SessionManager {
   get(id: string): Session | undefined;
   create(sessionId: string, provider: string, name: string, agent: string): Session;
+  fork(parentSessionId: string, childSessionId: string, name?: string): Session | undefined;
   setPath(sessionId: string, path: string): void;
   setAgent(sessionId: string, agent: string): void;
   setAgentSessionId(sessionId: string, agentSessionId: string): void;
@@ -28,6 +29,26 @@ export class InMemorySessionManager implements SessionManager {
     const session = this.makeSession(sessionId, provider, name, agent);
     this.sessions.set(sessionId, session);
     return session;
+  }
+
+  fork(parentSessionId: string, childSessionId: string, name?: string): Session | undefined {
+    const parent = this.sessions.get(parentSessionId);
+    if (!parent) {
+      return undefined;
+    }
+
+    const now = new Date().toISOString();
+    const child: Session = {
+      ...parent,
+      id: childSessionId,
+      name: name ?? `${parent.name}-fork`,
+      agentSessionId: undefined,
+      status: 'idle',
+      createdAt: now,
+      lastUsedAt: now,
+    };
+    this.sessions.set(childSessionId, child);
+    return child;
   }
 
   setPath(sessionId: string, path: string): void {

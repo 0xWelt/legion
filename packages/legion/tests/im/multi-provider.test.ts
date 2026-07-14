@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   IMCommandDefinition,
   IMEmbed,
+  IMForkEvent,
   IMMessage,
   IMMessageRef,
   IMProvider,
@@ -15,6 +16,7 @@ import { MultiIMProvider } from '../../src/im/multi-provider.js';
 
 function fakeProvider(name: string): IMProvider {
   let messageHandler: ((msg: IMMessage) => void | Promise<void>) | undefined;
+  let forkHandler: ((event: IMForkEvent) => void | Promise<void>) | undefined;
 
   return {
     name,
@@ -22,6 +24,9 @@ function fakeProvider(name: string): IMProvider {
     registerCommands: vi.fn(),
     onMessage: vi.fn((handler) => {
       messageHandler = handler;
+    }),
+    onSessionFork: vi.fn((handler) => {
+      forkHandler = handler;
     }),
     sendText: vi.fn(
       async (target: IMTarget, text: string): Promise<IMMessageRef> => ({
@@ -38,8 +43,12 @@ function fakeProvider(name: string): IMProvider {
     _emitMessage(msg: IMMessage) {
       void messageHandler?.(msg);
     },
+    _emitFork(event: IMForkEvent) {
+      void forkHandler?.(event);
+    },
   } as unknown as IMProvider & {
     _emitMessage: (msg: IMMessage) => void;
+    _emitFork: (event: IMForkEvent) => void;
   };
 }
 
@@ -157,5 +166,33 @@ describe('MultiIMProvider', () => {
 
     expect(a.sendEmbed).toHaveBeenCalledWith(target, embed);
     expect(b.sendEmbed).not.toHaveBeenCalled();
+  });
+
+  it('forwards session fork events from child providers', async () => {
+    const a = fakeProvider('a');
+    const b = fakeProvider('b');
+    const multi = new MultiIMProvider([a, b]);
+
+    const forks: IMForkEvent[] = [];
+    multi.onSessionFork((event) => {
+      forks.push(event);
+    });
+    await multi.start();
+
+    const event: IMForkEvent = {
+      provider: '',
+      parentSessionId: 'parent',
+      childSessionId: 'child',
+      name: 'thread',
+    };
+    (b as unknown as { _emitFork: (event: IMForkEvent) => void })._emitFork(event);
+
+    expect(forks).toHaveLength(1);
+    expect(forks[0]).toMatchObject({
+      provider: 'b',
+      parentSessionId: 'parent',
+      childSessionId: 'child',
+      name: 'thread',
+    });
   });
 });

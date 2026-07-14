@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import type { AgentRunnerFactory } from '../agent/types.js';
 import type { LegionConfig } from '../config/schema.js';
 import { DEFAULT_CONFIG_PATH, saveConfig } from '../config/loader.js';
-import type { IMMessage, IMProvider, IMTarget } from '../im/types.js';
+import type { IMForkEvent, IMMessage, IMProvider, IMTarget } from '../im/types.js';
 import type { StateStore } from '../state/store.js';
 import type { Logger } from '../utils/logger.js';
 import { ConsoleLogger } from '../utils/logger.js';
@@ -48,6 +48,7 @@ export class LegionCore {
     });
 
     this.deps.imProvider.onMessage((msg) => this.handleMessage(msg));
+    this.deps.imProvider.onSessionFork?.((event) => this.handleFork(event));
     await this.deps.imProvider.start();
   }
 
@@ -78,6 +79,49 @@ export class LegionCore {
     if (route.type === 'prompt' && route.prompt) {
       await this.handlePrompt(target, route.session, route.prompt);
     }
+  }
+
+  private async handleFork(event: IMForkEvent): Promise<void> {
+    this.logger.info('Forking session', {
+      parentSessionId: event.parentSessionId,
+      childSessionId: event.childSessionId,
+    });
+
+    const parent = this.sessionManager.get(event.parentSessionId);
+    if (!parent) {
+      this.logger.warn('Fork requested for unknown parent session', {
+        parentSessionId: event.parentSessionId,
+      });
+      this.sessionManager.create(
+        event.childSessionId,
+        event.provider,
+        event.name ?? 'main',
+        this.resolveDefaultAgent()
+      );
+    } else {
+      this.sessionManager.fork(parent.id, event.childSessionId, event.name);
+    }
+
+    const child = this.sessionManager.get(event.childSessionId);
+    if (!child) {
+      return;
+    }
+
+    await this.persist();
+
+    const target: IMTarget = {
+      sessionId: child.id,
+      provider: event.provider,
+    };
+    await this.deps.imProvider.sendText(
+      target,
+      [
+        `已 fork 新 session：${child.id}`,
+        `- workdir: ${child.path || '未绑定'}`,
+        `- agent: ${child.agent}`,
+        '如需修改设置，请使用 `/workdir <path>` 或 `/agent <name>`。',
+      ].join('\n')
+    );
   }
 
   private async handleCommand(target: IMTarget, session: Session, command: Command): Promise<void> {
