@@ -105,7 +105,12 @@ export class LegionCore {
             await this.deps.imProvider.sendText(target, validation.reason);
             break;
           }
-          this.workdirManager.bind(session.workdirId, session.workdirId, expandedPath);
+          this.workdirManager.bind(
+            session.workdirId,
+            session.provider,
+            session.workdirId,
+            expandedPath
+          );
           this.logger.info('Workdir bound', {
             workdirId: session.workdirId,
             path: expandedPath,
@@ -382,12 +387,19 @@ export class LegionCore {
       }
     }
 
+    if (legacy.workdirs) {
+      for (const workdir of Object.values(legacy.workdirs)) {
+        workdir.provider ??= this.inferLegacyProvider(workdir.id);
+      }
+    }
+
     if (legacy.sessions) {
       for (const session of Object.values(legacy.sessions)) {
         if (session.workspaceId !== undefined) {
           session.workdirId = session.workspaceId;
           delete session.workspaceId;
         }
+        session.provider ??= this.inferLegacyProvider(session.id);
       }
     }
 
@@ -395,6 +407,15 @@ export class LegionCore {
       workdirs: legacy.workdirs ?? {},
       sessions: legacy.sessions ?? {},
     };
+  }
+
+  private inferLegacyProvider(id: string): string {
+    // Discord snowflake IDs are 17-19 digit decimals; existing state from Discord
+    // installations will have these as workdir/session IDs.
+    if (/^\d{17,19}$/.test(id)) {
+      return 'discord';
+    }
+    return 'legacy';
   }
 
   private async persist(): Promise<void> {

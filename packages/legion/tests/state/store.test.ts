@@ -28,6 +28,7 @@ describe('JsonStateStore', () => {
       workdirs: {
         '1': {
           id: '1',
+          provider: 'test',
           name: 'repo-a',
           path: '/tmp/repo-a',
           defaultAgent: 'kimi',
@@ -49,6 +50,7 @@ describe('JsonStateStore', () => {
         workspaces: {
           '1': {
             id: '1',
+            provider: 'legacy',
             name: 'repo-a',
             workdir: '/tmp/repo-a',
             defaultAgent: 'kimi-code',
@@ -58,6 +60,7 @@ describe('JsonStateStore', () => {
         sessions: {
           s1: {
             id: 's1',
+            provider: 'legacy',
             name: 'main',
             workspaceId: '1',
             type: 'main',

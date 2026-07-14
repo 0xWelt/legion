@@ -2,7 +2,13 @@ import type { Workdir } from './types.js';
 
 export interface WorkdirManager {
   get(id: string): Workdir | undefined;
-  bind(workdirId: string, name: string, path: string, defaultAgent?: string): Workdir;
+  bind(
+    workdirId: string,
+    provider: string,
+    name: string,
+    path: string,
+    defaultAgent?: string
+  ): Workdir;
   setDefaultAgent(workdirId: string, defaultAgent: string): void;
   list(): Workdir[];
 }
@@ -20,13 +26,21 @@ export class InMemoryWorkdirManager implements WorkdirManager {
     return this.workdirs.get(id);
   }
 
-  bind(workdirId: string, name: string, path: string, defaultAgent?: string): Workdir {
+  bind(
+    workdirId: string,
+    provider: string,
+    name: string,
+    path: string,
+    defaultAgent?: string
+  ): Workdir {
+    const existing = this.workdirs.get(workdirId);
     const workdir: Workdir = {
       id: workdirId,
+      provider,
       name,
       path,
       defaultAgent,
-      createdAt: new Date().toISOString(),
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
     this.workdirs.set(workdirId, workdir);
     return workdir;
