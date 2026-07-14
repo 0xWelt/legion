@@ -46,6 +46,7 @@ export class LegionMessageRouter implements MessageRouter {
       if (command.type === 'workdir' && command.path) {
         const session = this.deps.sessionManager.createMain(
           msg.channelId,
+          msg.provider,
           'main',
           msg.channelId,
           this.defaultAgent
@@ -56,6 +57,7 @@ export class LegionMessageRouter implements MessageRouter {
       if (command.type === 'help') {
         const session = this.deps.sessionManager.createMain(
           msg.channelId,
+          msg.provider,
           'main',
           msg.channelId,
           this.defaultAgent
@@ -67,6 +69,7 @@ export class LegionMessageRouter implements MessageRouter {
         type: 'command',
         session: this.deps.sessionManager.createMain(
           msg.channelId,
+          msg.provider,
           'unknown',
           msg.channelId,
           this.defaultAgent
@@ -104,6 +107,7 @@ export class LegionMessageRouter implements MessageRouter {
     if (!existing) {
       this.deps.sessionManager.createThread(
         thread.id,
+        thread.provider,
         thread.name,
         workdir.id,
         workdir.defaultAgent ?? this.defaultAgent
@@ -129,12 +133,13 @@ export class LegionMessageRouter implements MessageRouter {
     if (msg.threadId) {
       return this.deps.sessionManager.createThread(
         sessionId,
+        msg.provider,
         `thread-${sessionId.slice(-4)}`,
         workdirId,
         agent
       );
     }
 
-    return this.deps.sessionManager.createMain(sessionId, 'main', workdirId, agent);
+    return this.deps.sessionManager.createMain(sessionId, msg.provider, 'main', workdirId, agent);
   }
 }

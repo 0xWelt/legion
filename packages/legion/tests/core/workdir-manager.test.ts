@@ -9,9 +9,10 @@ describe('InMemoryWorkdirManager', () => {
 
   it('binds and retrieves workdir with defaultAgent', () => {
     const manager = new InMemoryWorkdirManager();
-    const workdir = manager.bind('123', 'repo-a', '/home/user/repo-a', 'kimi-code');
+    const workdir = manager.bind('123', 'test', 'repo-a', '/home/user/repo-a', 'kimi-code');
 
     expect(workdir.id).toBe('123');
+    expect(workdir.provider).toBe('test');
     expect(workdir.name).toBe('repo-a');
     expect(workdir.path).toBe('/home/user/repo-a');
     expect(workdir.defaultAgent).toBe('kimi-code');
@@ -21,13 +22,13 @@ describe('InMemoryWorkdirManager', () => {
 
   it('binds workdir without defaultAgent to inherit global', () => {
     const manager = new InMemoryWorkdirManager();
-    const workdir = manager.bind('123', 'repo-a', '/home/user/repo-a');
+    const workdir = manager.bind('123', 'test', 'repo-a', '/home/user/repo-a');
     expect(workdir.defaultAgent).toBeUndefined();
   });
 
   it('sets workdir defaultAgent', () => {
     const manager = new InMemoryWorkdirManager();
-    manager.bind('123', 'repo-a', '/home/user/repo-a');
+    manager.bind('123', 'test', 'repo-a', '/home/user/repo-a');
     manager.setDefaultAgent('123', 'claude-code');
     expect(manager.get('123')?.defaultAgent).toBe('claude-code');
   });
@@ -36,6 +37,7 @@ describe('InMemoryWorkdirManager', () => {
     const manager = new InMemoryWorkdirManager({
       '123': {
         id: '123',
+        provider: 'test',
         name: 'repo-a',
         path: '/home/user/repo-a',
         defaultAgent: 'kimi-code',

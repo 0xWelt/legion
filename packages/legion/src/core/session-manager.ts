@@ -2,8 +2,20 @@ import type { Session } from './types.js';
 
 export interface SessionManager {
   get(id: string): Session | undefined;
-  createMain(sessionId: string, name: string, workdirId: string, agent: string): Session;
-  createThread(sessionId: string, name: string, workdirId: string, agent: string): Session;
+  createMain(
+    sessionId: string,
+    provider: string,
+    name: string,
+    workdirId: string,
+    agent: string
+  ): Session;
+  createThread(
+    sessionId: string,
+    provider: string,
+    name: string,
+    workdirId: string,
+    agent: string
+  ): Session;
   setAgentSessionId(sessionId: string, agentSessionId: string): void;
   setStatus(sessionId: string, status: Session['status']): void;
   touch(sessionId: string): void;
@@ -23,14 +35,26 @@ export class InMemorySessionManager implements SessionManager {
     return this.sessions.get(id);
   }
 
-  createMain(sessionId: string, name: string, workdirId: string, agent: string): Session {
-    const session = this.makeSession(sessionId, name, workdirId, 'main', agent);
+  createMain(
+    sessionId: string,
+    provider: string,
+    name: string,
+    workdirId: string,
+    agent: string
+  ): Session {
+    const session = this.makeSession(sessionId, provider, name, workdirId, 'main', agent);
     this.sessions.set(sessionId, session);
     return session;
   }
 
-  createThread(sessionId: string, name: string, workdirId: string, agent: string): Session {
-    const session = this.makeSession(sessionId, name, workdirId, 'thread', agent);
+  createThread(
+    sessionId: string,
+    provider: string,
+    name: string,
+    workdirId: string,
+    agent: string
+  ): Session {
+    const session = this.makeSession(sessionId, provider, name, workdirId, 'thread', agent);
     this.sessions.set(sessionId, session);
     return session;
   }
@@ -80,6 +104,7 @@ export class InMemorySessionManager implements SessionManager {
 
   private makeSession(
     sessionId: string,
+    provider: string,
     name: string,
     workdirId: string,
     type: Session['type'],
@@ -88,6 +113,7 @@ export class InMemorySessionManager implements SessionManager {
     const now = new Date().toISOString();
     return {
       id: sessionId,
+      provider,
       name,
       workdirId,
       type,
