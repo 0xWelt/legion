@@ -1,18 +1,8 @@
-export interface Workdir {
-  id: string;
-  provider: string;
-  name: string;
-  path: string;
-  defaultAgent?: string;
-  createdAt: string;
-}
-
 export interface Session {
   id: string;
   provider: string;
   name: string;
-  workdirId: string;
-  type: 'main' | 'thread';
+  path: string;
   agent: string;
   agentSessionId?: string;
   status: 'idle' | 'running' | 'error';
@@ -90,6 +80,5 @@ export interface CompleteEvent {
 }
 
 export interface LegionState {
-  workdirs: Record<string, Workdir>;
   sessions: Record<string, Session>;
 }

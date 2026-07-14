@@ -33,10 +33,7 @@ export type {
   ToolCallEvent,
   ToolResultEvent,
   UsageEvent,
-  Workdir,
 } from './core/types.js';
-export { InMemoryWorkdirManager } from './core/workdir-manager.js';
-export type { WorkdirManager } from './core/workdir-manager.js';
 export type {
   IMCommandDefinition,
   IMCommandOption,
@@ -46,7 +43,6 @@ export type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   RenderState,
 } from './im/types.js';
 export { JsonStateStore } from './state/store.js';

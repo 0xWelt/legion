@@ -7,6 +7,5 @@ export type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   RenderState,
 } from '@0xwelt/legion-api';

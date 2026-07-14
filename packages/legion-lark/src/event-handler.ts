@@ -21,8 +21,7 @@ export function parseMessageEvent(event: LarkMessageEvent): IMMessage | undefine
   return {
     id: message.message_id,
     provider: 'lark',
-    channelId: message.chat_id,
-    threadId: message.thread_id,
+    sessionId: message.thread_id ?? message.chat_id,
     authorId: sender.sender_id.open_id,
     authorName: sender.name ?? sender.sender_id.open_id,
     content: text,

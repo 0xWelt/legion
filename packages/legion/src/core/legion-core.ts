@@ -3,15 +3,14 @@ import { homedir } from 'node:os';
 import type { AgentRunnerFactory } from '../agent/types.js';
 import type { LegionConfig } from '../config/schema.js';
 import { DEFAULT_CONFIG_PATH, saveConfig } from '../config/loader.js';
-import type { IMMessage, IMProvider, IMTarget, IMThread, RenderState } from '../im/types.js';
+import type { IMMessage, IMProvider, IMTarget } from '../im/types.js';
 import type { StateStore } from '../state/store.js';
 import type { Logger } from '../utils/logger.js';
 import { ConsoleLogger } from '../utils/logger.js';
 import type { Command } from './command-parser.js';
 import { LegionMessageRouter } from './message-router.js';
 import { InMemorySessionManager } from './session-manager.js';
-import type { AgentEvent, LegionState, Session, Workdir } from './types.js';
-import { InMemoryWorkdirManager } from './workdir-manager.js';
+import type { AgentEvent, LegionState, Session } from './types.js';
 
 export interface LegionCoreDeps {
   config: LegionConfig;
@@ -22,7 +21,6 @@ export interface LegionCoreDeps {
 }
 
 export class LegionCore {
-  private readonly workdirManager: InMemoryWorkdirManager;
   private readonly sessionManager: InMemorySessionManager;
   private readonly router: LegionMessageRouter;
   private readonly sessionQueues = new Map<string, Promise<void>>();
@@ -33,10 +31,8 @@ export class LegionCore {
     logger?: Logger
   ) {
     this.logger = logger ?? new ConsoleLogger();
-    this.workdirManager = new InMemoryWorkdirManager();
     this.sessionManager = new InMemorySessionManager();
     this.router = new LegionMessageRouter({
-      workdirManager: this.workdirManager,
       sessionManager: this.sessionManager,
       runnerFactory: deps.runnerFactory,
       defaultAgent: this.resolveDefaultAgent(),
@@ -45,36 +41,27 @@ export class LegionCore {
 
   async start(): Promise<void> {
     const state = this.migrateState(await this.deps.stateStore.load());
-    this.workdirManager.load(state.workdirs);
     this.sessionManager.load(state.sessions);
 
     this.logger.info('Legion started', {
-      workdirs: Object.keys(state.workdirs).length,
       sessions: Object.keys(state.sessions).length,
     });
 
     this.deps.imProvider.onMessage((msg) => this.handleMessage(msg));
-    this.deps.imProvider.onThreadCreate((thread) => this.handleThreadCreate(thread));
-    this.deps.imProvider.onThreadDelete((threadId) => this.handleThreadDelete(threadId));
-    this.deps.imProvider.onThreadArchive((threadId, archived) =>
-      this.handleThreadArchive(threadId, archived)
-    );
-
     await this.deps.imProvider.start();
   }
 
   async handleMessage(msg: IMMessage): Promise<void> {
     this.logger.info('Received message', {
-      channelId: msg.channelId,
-      threadId: msg.threadId,
+      sessionId: msg.sessionId,
       author: msg.authorName,
       content: msg.content,
     });
 
     const route = await this.router.route(msg);
     const target: IMTarget = {
-      channelId: msg.channelId,
-      threadId: msg.threadId,
+      sessionId: msg.sessionId,
+      provider: msg.provider,
       replyToMessageId: msg.id,
     };
 
@@ -105,38 +92,25 @@ export class LegionCore {
             await this.deps.imProvider.sendText(target, validation.reason);
             break;
           }
-          this.workdirManager.bind(
-            session.workdirId,
-            session.provider,
-            session.workdirId,
-            expandedPath
-          );
-          this.logger.info('Workdir bound', {
-            workdirId: session.workdirId,
-            path: expandedPath,
-          });
+          this.sessionManager.setPath(session.id, expandedPath);
+          this.logger.info('Workdir bound', { sessionId: session.id, path: expandedPath });
           await this.deps.imProvider.sendText(target, `已绑定 workdir: ${expandedPath}`);
         } else {
-          const workdir = this.workdirManager.get(session.workdirId);
-          const reply = workdir?.path ? `当前 workdir: ${workdir.path}` : '尚未绑定 workdir';
+          const reply = session.path ? `当前 workdir: ${session.path}` : '尚未绑定 workdir';
           await this.deps.imProvider.sendText(target, reply);
         }
         break;
       }
       case 'status': {
-        const workdir = this.workdirManager.get(session.workdirId);
-        const lines = ['**状态**'];
-        if (workdir) {
-          lines.push(`- workdir: ${workdir.path ?? '未绑定'}`);
-        } else {
-          lines.push('- workdir: 未找到');
-        }
-        lines.push(
-          `- IM session: ${session.id}`,
+        const lines = [
+          '**状态**',
+          `- session: ${session.id}`,
+          `- provider: ${session.provider}`,
+          `- workdir: ${session.path || '未绑定'}`,
           `- agent: ${session.agent}`,
           `- agent session: ${session.agentSessionId ?? '未初始化'}`,
-          `- status: ${session.status}`
-        );
+          `- status: ${session.status}`,
+        ];
         await this.deps.imProvider.sendText(target, lines.join('\n'));
         break;
       }
@@ -150,63 +124,25 @@ export class LegionCore {
             );
             break;
           }
-          switch (command.scope) {
-            case 'global': {
-              this.deps.config.defaultAgent = command.name;
-              this.router.setDefaultAgent(command.name);
-              await saveConfig(this.deps.configPath ?? DEFAULT_CONFIG_PATH, this.deps.config);
-              await this.deps.imProvider.sendText(target, `已设置全局默认 agent: ${command.name}`);
-              break;
-            }
-            case 'workdir': {
-              const workdir = this.workdirManager.get(session.workdirId);
-              if (!workdir) {
-                await this.deps.imProvider.sendText(
-                  target,
-                  '当前 workdir 不存在，无法设置 workdir 级 agent'
-                );
-                break;
-              }
-              this.workdirManager.setDefaultAgent(workdir.id, command.name);
+          if (command.scope === 'global') {
+            this.deps.config.defaultAgent = command.name;
+            this.router.setDefaultAgent(command.name);
+            await saveConfig(this.deps.configPath ?? DEFAULT_CONFIG_PATH, this.deps.config);
+            await this.deps.imProvider.sendText(target, `已设置全局默认 agent: ${command.name}`);
+          } else {
+            if (session.agentSessionId) {
               await this.deps.imProvider.sendText(
                 target,
-                `已设置 workdir 默认 agent: ${command.name}`
+                `当前 session 已与 ${session.agent} 的 agent session 绑定，无法切换到其它 agent。如需使用 ${command.name}，请新建一个 IM session。`
               );
               break;
             }
-            case 'session':
-            default: {
-              if (session.agentSessionId) {
-                await this.deps.imProvider.sendText(
-                  target,
-                  `当前 session 已与 ${session.agent} 的 agent session 绑定，无法切换到其它 agent。如需使用 ${command.name}，请新建 thread 或在新 workdir 中开始会话。`
-                );
-                break;
-              }
-              this.sessionManager.setAgent(session.id, command.name);
-              await this.deps.imProvider.sendText(
-                target,
-                `已切换到 session agent: ${command.name}`
-              );
-              break;
-            }
+            this.sessionManager.setAgent(session.id, command.name);
+            await this.deps.imProvider.sendText(target, `已切换到 session agent: ${command.name}`);
           }
         } else {
-          const scopeLabel =
-            command.scope === 'global'
-              ? '全局默认'
-              : command.scope === 'workdir'
-                ? 'workdir 默认'
-                : '当前 session';
-          let value: string;
-          if (command.scope === 'global') {
-            value = this.resolveDefaultAgent();
-          } else if (command.scope === 'workdir') {
-            const workdir = this.workdirManager.get(session.workdirId);
-            value = workdir?.defaultAgent ?? this.resolveDefaultAgent();
-          } else {
-            value = session.agent;
-          }
+          const scopeLabel = command.scope === 'global' ? '全局默认' : '当前 session';
+          const value = command.scope === 'global' ? this.resolveDefaultAgent() : session.agent;
           await this.deps.imProvider.sendText(target, `${scopeLabel} agent: ${value}`);
         }
         break;
@@ -216,9 +152,9 @@ export class LegionCore {
           target,
           [
             '可用命令：',
-            '`/workdir <path>` — 绑定或查看当前 workdir 的工作目录',
-            '`/status` — 查看当前 workdir 与 path 状态',
-            '`/agent [--global|--workdir|--session] [name]` — 查看或切换 runner（默认 session）',
+            '`/workdir <path>` — 绑定或查看当前 session 的工作目录',
+            '`/status` — 查看当前 session 状态',
+            '`/agent [--global|--session] [name]` — 查看或切换 runner（默认 session）',
             '`/help` — 显示本帮助',
           ].join('\n')
         );
@@ -234,9 +170,8 @@ export class LegionCore {
   private async handlePrompt(target: IMTarget, session: Session, prompt: string): Promise<void> {
     this.logger.info('Handling prompt', { sessionId: session.id, prompt });
 
-    const workdir = this.workdirManager.get(session.workdirId);
-    if (!workdir?.path) {
-      await this.deps.imProvider.sendText(target, 'workdir 尚未绑定。');
+    if (!session.path) {
+      await this.deps.imProvider.sendText(target, '当前 session 尚未绑定 workdir。');
       return;
     }
 
@@ -254,7 +189,7 @@ export class LegionCore {
 
     const work = async (): Promise<void> => {
       this.sessionManager.setStatus(session.id, 'running');
-      const renderState: RenderState = {
+      const renderState = {
         toolMessageRefs: new Map(),
       };
 
@@ -262,7 +197,7 @@ export class LegionCore {
         for await (const event of runner.run(
           {
             sessionId: session.id,
-            workdir: workdir.path,
+            workdir: session.path,
             agentSessionId: session.agentSessionId,
           },
           prompt
@@ -313,29 +248,6 @@ export class LegionCore {
     }
   }
 
-  private async handleThreadCreate(thread: IMThread): Promise<void> {
-    this.logger.info('Thread created', { threadId: thread.id, channelId: thread.channelId });
-    await this.router.onThreadCreate(thread);
-    await this.persist();
-  }
-
-  private async handleThreadDelete(threadId: string): Promise<void> {
-    this.logger.info('Thread deleted', { threadId });
-    const session = this.sessionManager.get(threadId);
-    if (session) {
-      this.sessionManager.setStatus(threadId, 'idle');
-      await this.persist();
-    }
-  }
-
-  private async handleThreadArchive(threadId: string, archived: boolean): Promise<void> {
-    this.logger.info('Thread archived', { threadId, archived });
-    const session = this.sessionManager.get(threadId);
-    if (session) {
-      await this.persist();
-    }
-  }
-
   private resolveDefaultAgent(): string {
     if (this.deps.config.defaultAgent) {
       return this.deps.config.defaultAgent;
@@ -371,47 +283,44 @@ export class LegionCore {
 
   private migrateState(state: LegionState): LegionState {
     const legacy = state as unknown as {
-      workspaces?: Record<string, Workdir & { workdir?: string }>;
-      workdirs?: Record<string, Workdir>;
-      sessions?: Record<string, Session & { workspaceId?: string }>;
+      workspaces?: Record<string, { path?: string; workdir?: string; defaultAgent?: string }>;
+      workdirs?: Record<string, { path?: string; defaultAgent?: string }>;
+      sessions?: Record<
+        string,
+        Session & { workspaceId?: string; workdirId?: string; type?: string }
+      >;
     };
 
-    if (legacy.workspaces && !legacy.workdirs) {
-      legacy.workdirs = {};
-      for (const [id, workspace] of Object.entries(legacy.workspaces)) {
-        const workdir: Workdir = {
-          ...workspace,
-          path: workspace.path ?? workspace.workdir ?? '',
-        };
-        legacy.workdirs[id] = workdir;
-      }
-    }
-
+    const workdirPaths = new Map<string, string>();
     if (legacy.workdirs) {
-      for (const workdir of Object.values(legacy.workdirs)) {
-        workdir.provider ??= this.inferLegacyProvider(workdir.id);
+      for (const [id, workdir] of Object.entries(legacy.workdirs)) {
+        workdirPaths.set(id, workdir.path ?? '');
+      }
+    } else if (legacy.workspaces) {
+      for (const [id, workspace] of Object.entries(legacy.workspaces)) {
+        workdirPaths.set(id, workspace.path ?? workspace.workdir ?? '');
       }
     }
 
+    const sessions: Record<string, Session> = {};
     if (legacy.sessions) {
-      for (const session of Object.values(legacy.sessions)) {
-        if (session.workspaceId !== undefined) {
-          session.workdirId = session.workspaceId;
-          delete session.workspaceId;
-        }
-        session.provider ??= this.inferLegacyProvider(session.id);
+      for (const [id, session] of Object.entries(legacy.sessions)) {
+        const workdirId = session.workdirId ?? session.workspaceId ?? '';
+        const path = session.path ?? workdirPaths.get(workdirId) ?? '';
+        sessions[id] = {
+          ...session,
+          path,
+          provider: session.provider ?? this.inferLegacyProvider(id),
+        };
       }
     }
 
-    return {
-      workdirs: legacy.workdirs ?? {},
-      sessions: legacy.sessions ?? {},
-    };
+    return { sessions };
   }
 
   private inferLegacyProvider(id: string): string {
     // Discord snowflake IDs are 17-19 digit decimals; existing state from Discord
-    // installations will have these as workdir/session IDs.
+    // installations will have these as session IDs.
     if (/^\d{17,19}$/.test(id)) {
       return 'discord';
     }
@@ -419,10 +328,7 @@ export class LegionCore {
   }
 
   private async persist(): Promise<void> {
-    await this.deps.stateStore.save({
-      workdirs: this.workdirManager.dump(),
-      sessions: this.sessionManager.dump(),
-    });
+    await this.deps.stateStore.save({ sessions: this.sessionManager.dump() });
     this.logger.info('State persisted');
   }
 }

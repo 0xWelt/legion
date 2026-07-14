@@ -28,40 +28,27 @@ export interface IMProvider {
   renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState>;
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
-  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void;
-  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void;
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void;
 }
 
 export interface IMTarget {
-  channelId: string;
-  threadId?: string;
+  sessionId: string;
+  provider: string;
   replyToMessageId?: string;
 }
 
 export interface IMMessageRef {
   provider: string;
-  channelId: string;
-  threadId?: string;
+  sessionId: string;
   messageId: string;
 }
 
 export interface IMMessage {
   id: string;
   provider: string;
-  channelId: string;
-  threadId?: string;
+  sessionId: string;
   authorId: string;
   authorName: string;
   content: string;
-  createdAt: Date;
-}
-
-export interface IMThread {
-  id: string;
-  provider: string;
-  channelId: string;
-  name: string;
   createdAt: Date;
 }
 

@@ -75,7 +75,7 @@ describe('LarkProvider', () => {
     const fake = createFakeClient();
     const provider = createProvider(fake);
 
-    const ref = await provider.sendText({ channelId: 'oc_1' }, 'hello');
+    const ref = await provider.sendText({ sessionId: 'oc_1', provider: 'lark' }, 'hello');
 
     expect(fake.request).toHaveBeenCalledTimes(1);
     expect(fake.request.mock.calls[0][0]).toMatchObject({
@@ -88,7 +88,7 @@ describe('LarkProvider', () => {
         content: JSON.stringify({ text: 'hello' }),
       },
     });
-    expect(ref).toEqual({ provider: 'lark', channelId: 'oc_1', messageId: 'msg-1' });
+    expect(ref).toEqual({ provider: 'lark', sessionId: 'oc_1', messageId: 'msg-1' });
   });
 
   it('replies to a specific message when replyToMessageId is set', async () => {
@@ -96,7 +96,7 @@ describe('LarkProvider', () => {
     const provider = createProvider(fake);
 
     const ref = await provider.sendText(
-      { channelId: 'oc_1', replyToMessageId: 'om_user' },
+      { sessionId: 'oc_1', provider: 'lark', replyToMessageId: 'om_user' },
       'reply'
     );
 
@@ -112,11 +112,33 @@ describe('LarkProvider', () => {
     expect(ref.messageId).toBe('reply-msg-1');
   });
 
+  it('uses parent chat_id when sending to a thread session', async () => {
+    const fake = createFakeClient();
+    const provider = createProvider(fake);
+
+    const handler = vi.fn();
+    provider.onMessage(handler);
+
+    await (
+      provider as unknown as { handleMessageEvent: (data: LarkMessageEvent) => Promise<void> }
+    ).handleMessageEvent(
+      createMessageEvent('hello', { thread_id: 'ot_1', chat_id: 'oc_1', message_id: 'om_root' })
+    );
+
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'ot_1' }));
+
+    const ref = await provider.sendText({ sessionId: 'ot_1', provider: 'lark' }, 'in thread');
+    expect(fake.request.mock.calls[0][0]).toMatchObject({
+      data: { receive_id: 'oc_1' },
+    });
+    expect(ref).toEqual({ provider: 'lark', sessionId: 'ot_1', messageId: 'msg-1' });
+  });
+
   it('edits messages', async () => {
     const fake = createFakeClient();
     const provider = createProvider(fake);
 
-    await provider.editText({ provider: 'lark', channelId: 'oc_1', messageId: 'om_1' }, 'updated');
+    await provider.editText({ provider: 'lark', sessionId: 'oc_1', messageId: 'om_1' }, 'updated');
 
     expect(fake.request).toHaveBeenCalledTimes(1);
     expect(fake.request.mock.calls[0][0]).toMatchObject({
@@ -141,7 +163,7 @@ describe('LarkProvider', () => {
       expect.objectContaining({
         id: 'om_1',
         provider: 'lark',
-        channelId: 'oc_1',
+        sessionId: 'oc_1',
         authorId: 'ou_1',
         authorName: 'Tester',
         content: '/workdir /tmp/repo',
@@ -193,7 +215,7 @@ describe('LarkProvider', () => {
     const state: RenderState = { toolMessageRefs: new Map() };
 
     const textEvent: AgentEvent = { type: 'text', text: 'first' };
-    await provider.renderEvent({ channelId: 'oc_1' }, textEvent, state);
+    await provider.renderEvent({ sessionId: 'oc_1', provider: 'lark' }, textEvent, state);
 
     expect(fake.request).toHaveBeenCalledTimes(1);
     const firstCall = fake.request.mock.calls[0][0] as {
@@ -205,7 +227,7 @@ describe('LarkProvider', () => {
     expect(state.replyMessageRef).toBeDefined();
 
     const secondEvent: AgentEvent = { type: 'text', text: 'second' };
-    await provider.renderEvent({ channelId: 'oc_1' }, secondEvent, state);
+    await provider.renderEvent({ sessionId: 'oc_1', provider: 'lark' }, secondEvent, state);
 
     expect(fake.request).toHaveBeenCalledTimes(2);
     const secondCall = fake.request.mock.calls[1][0] as {
@@ -226,7 +248,7 @@ describe('LarkProvider', () => {
     const state: RenderState = { toolMessageRefs: new Map() };
 
     await provider.renderEvent(
-      { channelId: 'oc_1' },
+      { sessionId: 'oc_1', provider: 'lark' },
       { type: 'tool_call', toolId: 't1', toolName: 'read_file', input: { path: '/tmp/a' } },
       state
     );

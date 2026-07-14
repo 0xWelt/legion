@@ -95,9 +95,9 @@ describe('DiscordProvider', () => {
     const channel = createMockChannel();
     lastClient().channels.fetch.mockResolvedValue(channel);
 
-    const ref = await provider.sendText({ channelId: 'ch-1' }, 'hello');
+    const ref = await provider.sendText({ sessionId: 'ch-1', provider: 'discord' }, 'hello');
     expect(channel.send).toHaveBeenCalledWith({ content: 'hello' });
-    expect(ref).toEqual({ provider: 'discord', channelId: 'ch-1', messageId: 'msg-1' });
+    expect(ref).toEqual({ provider: 'discord', sessionId: 'ch-1', messageId: 'msg-1' });
   });
 
   it('truncates long text', async () => {
@@ -106,7 +106,7 @@ describe('DiscordProvider', () => {
     lastClient().channels.fetch.mockResolvedValue(channel);
 
     const longText = 'a'.repeat(3000);
-    await provider.sendText({ channelId: 'ch-1' }, longText);
+    await provider.sendText({ sessionId: 'ch-1', provider: 'discord' }, longText);
     expect(channel.send).toHaveBeenCalledWith({ content: 'a'.repeat(2000) });
   });
 
@@ -123,7 +123,11 @@ describe('DiscordProvider', () => {
       toolMessageRefs: new Map(),
     };
 
-    await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'first' }, state);
+    await provider.renderEvent(
+      { sessionId: 'ch-1', provider: 'discord' },
+      { type: 'text', text: 'first' },
+      state
+    );
     expect(channel.send).toHaveBeenCalledTimes(1);
     expect(getFlags(channel.send.mock.calls[0]!)).toBe(IS_COMPONENTS_V2);
     expect(channel.send.mock.calls[0]![0]).toMatchObject({
@@ -131,7 +135,11 @@ describe('DiscordProvider', () => {
     });
     expect(state.replyMessageRefs).toHaveLength(1);
 
-    await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'second' }, state);
+    await provider.renderEvent(
+      { sessionId: 'ch-1', provider: 'discord' },
+      { type: 'text', text: 'second' },
+      state
+    );
     expect(channel.edit).toHaveBeenCalledTimes(1);
     expect(getFlags(channel.edit.mock.calls[0]!)).toBe(IS_COMPONENTS_V2);
     expect(getComponentContents(channel.edit.mock.calls[0]!)).toEqual(['second']);
@@ -150,15 +158,27 @@ describe('DiscordProvider', () => {
       toolMessageRefs: new Map(),
     };
 
-    await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'first' }, state);
-    await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'second' }, state);
+    await provider.renderEvent(
+      { sessionId: 'ch-1', provider: 'discord' },
+      { type: 'text', text: 'first' },
+      state
+    );
+    await provider.renderEvent(
+      { sessionId: 'ch-1', provider: 'discord' },
+      { type: 'text', text: 'second' },
+      state
+    );
 
     expect(channel.send).not.toHaveBeenCalled();
     expect(channel.edit).not.toHaveBeenCalled();
     expect(state.accumulatedOutput?.segments).toHaveLength(1);
     expect(state.accumulatedOutput?.segments[0]).toMatchObject({ type: 'text', content: 'second' });
 
-    await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+    await provider.renderEvent(
+      { sessionId: 'ch-1', provider: 'discord' },
+      { type: 'complete', exitCode: 0 },
+      state
+    );
     expect(channel.send).toHaveBeenCalledTimes(1);
     expect(getFlags(channel.send.mock.calls[0]!)).toBe(IS_COMPONENTS_V2);
     expect(getComponentContents(channel.send.mock.calls[0]!)).toEqual(['second']);
@@ -180,7 +200,11 @@ describe('DiscordProvider', () => {
         toolMessageRefs: new Map(),
       };
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'first' }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: 'first' },
+        state
+      );
       expect(channel.send).not.toHaveBeenCalled();
       expect(state.textEditTimer).toBeDefined();
 
@@ -188,14 +212,22 @@ describe('DiscordProvider', () => {
       expect(channel.send).toHaveBeenCalledTimes(1);
       expect(getComponentContents(channel.send.mock.calls[0]!)).toEqual(['first']);
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'second' }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: 'second' },
+        state
+      );
       expect(channel.edit).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(1000);
       expect(channel.edit).toHaveBeenCalledTimes(1);
       expect(getComponentContents(channel.edit.mock.calls[0]!)).toEqual(['second']);
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'complete', exitCode: 0 },
+        state
+      );
       expect(state.textEditTimer).toBeUndefined();
     } finally {
       vi.useRealTimers();
@@ -220,7 +252,7 @@ describe('DiscordProvider', () => {
       // Simulate a fast token stream: 5 text events in a row.
       for (let i = 1; i <= 5; i++) {
         await provider.renderEvent(
-          { channelId: 'ch-1' },
+          { sessionId: 'ch-1', provider: 'discord' },
           { type: 'text', text: 'token'.repeat(i) },
           state
         );
@@ -236,7 +268,7 @@ describe('DiscordProvider', () => {
 
       // After the first interval, further text should be edited, not sent as a new message.
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'text', text: 'token'.repeat(6) },
         state
       );
@@ -245,7 +277,11 @@ describe('DiscordProvider', () => {
       expect(channel.edit).toHaveBeenCalledTimes(1);
       expect(getComponentContents(channel.edit.mock.calls[0]!)).toEqual(['token'.repeat(6)]);
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'complete', exitCode: 0 },
+        state
+      );
       expect(state.textEditTimer).toBeUndefined();
     } finally {
       vi.useRealTimers();
@@ -268,12 +304,12 @@ describe('DiscordProvider', () => {
       };
 
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'text', text: 'Hello', delta: 'Hello' },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'text', text: 'Hello world', delta: ' world' },
         state
       );
@@ -302,12 +338,12 @@ describe('DiscordProvider', () => {
       };
 
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'thinking', text: 'thinking...', delta: 'thinking...' },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'text', text: 'answer', delta: 'answer' },
         state
       );
@@ -340,13 +376,13 @@ describe('DiscordProvider', () => {
       toolName: 'read_file',
       input: { path: '/tmp/a' },
     };
-    await provider.renderEvent({ channelId: 'ch-1' }, toolCall, state);
+    await provider.renderEvent({ sessionId: 'ch-1', provider: 'discord' }, toolCall, state);
     expect(channel.send).toHaveBeenCalledTimes(1);
     let contents = getComponentContents(channel.send.mock.calls[0]!);
     expect(contents[0]).toContain('🔧 read_file');
 
     const toolResult: AgentEvent = { type: 'tool_result', toolId: 't1', output: 'content' };
-    await provider.renderEvent({ channelId: 'ch-1' }, toolResult, state);
+    await provider.renderEvent({ sessionId: 'ch-1', provider: 'discord' }, toolResult, state);
     expect(channel.edit).toHaveBeenCalledTimes(1);
     contents = getComponentContents(channel.edit.mock.calls[0]!);
     expect(contents[0]).toContain('🔧 read_file');
@@ -368,7 +404,7 @@ describe('DiscordProvider', () => {
     };
 
     await provider.renderEvent(
-      { channelId: 'ch-1' },
+      { sessionId: 'ch-1', provider: 'discord' },
       {
         type: 'tool_call_delta',
         toolId: 't1',
@@ -384,7 +420,7 @@ describe('DiscordProvider', () => {
     expect(contents[0]).toContain('{"com');
 
     await provider.renderEvent(
-      { channelId: 'ch-1' },
+      { sessionId: 'ch-1', provider: 'discord' },
       {
         type: 'tool_call_delta',
         toolId: 't1',
@@ -399,7 +435,7 @@ describe('DiscordProvider', () => {
     expect(contents[0]).toContain('{"command":"ls"');
 
     await provider.renderEvent(
-      { channelId: 'ch-1' },
+      { sessionId: 'ch-1', provider: 'discord' },
       { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: 'ls' } },
       state
     );
@@ -426,7 +462,7 @@ describe('DiscordProvider', () => {
 
       const longCommand = 'a'.repeat(6000);
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: longCommand } },
         state
       );
@@ -462,21 +498,29 @@ describe('DiscordProvider', () => {
         toolMessageRefs: new Map(),
       };
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'first' }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: 'first' },
+        state
+      );
       await vi.advanceTimersByTimeAsync(1000);
       expect(channel.send).toHaveBeenCalledTimes(1);
 
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: 'ls' } },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_result', toolId: 't1', output: 'a.txt' },
         state
       );
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'summary' }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: 'summary' },
+        state
+      );
 
       await vi.advanceTimersByTimeAsync(1000);
 
@@ -505,24 +549,28 @@ describe('DiscordProvider', () => {
         toolMessageRefs: new Map(),
       };
 
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: 'answer' }, state);
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: 'answer' },
+        state
+      );
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'thinking', text: 'thinking...', delta: 'thinking...' },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: 'ls' } },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_result', toolId: 't1', output: 'a.txt' },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'error', message: 'oops', fatal: true },
         state
       );
@@ -557,22 +605,34 @@ describe('DiscordProvider', () => {
 
       const longPrefix = 'a'.repeat(1500);
       const finalAnswer = 'final answer text';
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: longPrefix }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: longPrefix },
+        state
+      );
       await vi.advanceTimersByTimeAsync(1000);
       expect(channel.send).toHaveBeenCalledTimes(1);
 
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: 'ls' } },
         state
       );
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'tool_result', toolId: 't1', output: 'b'.repeat(1000) },
         state
       );
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: finalAnswer }, state);
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: finalAnswer },
+        state
+      );
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'complete', exitCode: 0 },
+        state
+      );
 
       expect(channel.edit).toHaveBeenCalledTimes(1);
       const contents = getComponentContents(channel.edit.mock.calls[0]!);
@@ -596,8 +656,16 @@ describe('DiscordProvider', () => {
       };
 
       const longText = 'a'.repeat(7000);
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'text', text: longText }, state);
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'text', text: longText },
+        state
+      );
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'complete', exitCode: 0 },
+        state
+      );
 
       expect(channel.send).toHaveBeenCalledTimes(2);
       expect(channel.edit).not.toHaveBeenCalled();
@@ -629,12 +697,12 @@ describe('DiscordProvider', () => {
     const tail = 'tail-content';
     const longOutput = 'a'.repeat(2000) + tail;
     await provider.renderEvent(
-      { channelId: 'ch-1' },
+      { sessionId: 'ch-1', provider: 'discord' },
       { type: 'tool_call', toolId: 't1', toolName: 'bash', input: { command: 'ls' } },
       state
     );
     await provider.renderEvent(
-      { channelId: 'ch-1' },
+      { sessionId: 'ch-1', provider: 'discord' },
       { type: 'tool_result', toolId: 't1', output: longOutput },
       state
     );
@@ -658,7 +726,7 @@ describe('DiscordProvider', () => {
       };
 
       await provider.renderEvent(
-        { channelId: 'ch-1' },
+        { sessionId: 'ch-1', provider: 'discord' },
         { type: 'text', text: 'a'.repeat(7000) },
         state
       );
@@ -667,7 +735,11 @@ describe('DiscordProvider', () => {
 
       // Replace the long text with a short one so only one page remains.
       state.accumulatedOutput = { segments: [{ type: 'text', content: 'short' }] };
-      await provider.renderEvent({ channelId: 'ch-1' }, { type: 'complete', exitCode: 0 }, state);
+      await provider.renderEvent(
+        { sessionId: 'ch-1', provider: 'discord' },
+        { type: 'complete', exitCode: 0 },
+        state
+      );
 
       expect(channel.edit).toHaveBeenCalledTimes(1);
       expect(channel.messages.fetch).toHaveBeenCalledTimes(2); // 1 edit fetch + 1 delete fetch
@@ -704,7 +776,7 @@ describe('DiscordProvider', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('maps thread message channelId to parent channel', async () => {
+  it('uses the actual message channel as session id', async () => {
     const provider = new DiscordProvider({ botToken: 'token', allowedGuildId: 'guild' });
     await provider.start();
     const handler = vi.fn();
@@ -728,9 +800,7 @@ describe('DiscordProvider', () => {
       createdAt: new Date(),
     });
 
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({ channelId: 'ch-1', threadId: 'thread-1' })
-    );
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'thread-1' }));
   });
 
   it('sends workspace guide on new text channel create', async () => {
@@ -755,7 +825,10 @@ describe('DiscordProvider', () => {
     channel.send.mockRejectedValueOnce(systemError).mockResolvedValueOnce({ id: 'msg-2' });
     lastClient().channels.fetch.mockResolvedValue(channel);
 
-    const ref = await provider.sendText({ channelId: 'ch-1', replyToMessageId: 'sys-1' }, 'hello');
+    const ref = await provider.sendText(
+      { sessionId: 'ch-1', provider: 'discord', replyToMessageId: 'sys-1' },
+      'hello'
+    );
     expect(channel.send).toHaveBeenCalledTimes(2);
     expect(channel.send).toHaveBeenNthCalledWith(1, {
       content: 'hello',
@@ -804,12 +877,12 @@ describe('DiscordProvider', () => {
       expect.objectContaining({
         id: 'interaction-1',
         content: '/workdir /tmp/repo',
-        channelId: 'ch-1',
+        sessionId: 'ch-1',
       })
     );
 
     const ref = await provider.sendText(
-      { channelId: 'ch-1', replyToMessageId: 'interaction-1' },
+      { sessionId: 'ch-1', provider: 'discord', replyToMessageId: 'interaction-1' },
       'bound'
     );
     expect(editReply).toHaveBeenCalledWith({ content: 'bound' });
@@ -875,14 +948,14 @@ describe('DiscordProvider', () => {
 
     // Replies sent in reverse order must each edit their own interaction.
     const ref2 = await provider.sendText(
-      { channelId: 'ch-1', replyToMessageId: 'interaction-2' },
+      { sessionId: 'ch-1', provider: 'discord', replyToMessageId: 'interaction-2' },
       'status ok'
     );
     expect(editReply2).toHaveBeenCalledWith({ content: 'status ok' });
     expect(ref2.messageId).toBe('reply-2');
 
     const ref1 = await provider.sendText(
-      { channelId: 'ch-1', replyToMessageId: 'interaction-1' },
+      { sessionId: 'ch-1', provider: 'discord', replyToMessageId: 'interaction-1' },
       'bound'
     );
     expect(editReply1).toHaveBeenCalledWith({ content: 'bound' });

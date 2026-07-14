@@ -12,7 +12,6 @@ import type {
   IMMessageRef,
   IMProvider,
   IMTarget,
-  IMThread,
   RenderState,
 } from '../../src/im/types.js';
 import { JsonStateStore } from '../../src/state/store.js';
@@ -35,37 +34,19 @@ class FakeProvider implements IMProvider {
   readonly sent: Array<{ target: IMTarget; text: string }> = [];
   readonly embeds: Array<{ target: IMTarget; embed: unknown }> = [];
   readonly rendered: AgentEvent[] = [];
-  private handlers = {
-    message: [] as Array<(msg: IMMessage) => void | Promise<void>>,
-    threadCreate: [] as Array<(thread: IMThread) => void | Promise<void>>,
-    threadDelete: [] as Array<(threadId: string) => void | Promise<void>>,
-    threadArchive: [] as Array<(threadId: string, archived: boolean) => void | Promise<void>>,
-  };
+  private handlers: Array<(msg: IMMessage) => void | Promise<void>> = [];
 
   async start(): Promise<void> {}
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void {
-    this.handlers.message.push(handler);
-  }
-
-  onThreadCreate(handler: (thread: IMThread) => void | Promise<void>): void {
-    this.handlers.threadCreate.push(handler);
-  }
-
-  onThreadDelete(handler: (threadId: string) => void | Promise<void>): void {
-    this.handlers.threadDelete.push(handler);
-  }
-
-  onThreadArchive(handler: (threadId: string, archived: boolean) => void | Promise<void>): void {
-    this.handlers.threadArchive.push(handler);
+    this.handlers.push(handler);
   }
 
   async sendText(target: IMTarget, text: string): Promise<IMMessageRef> {
     this.sent.push({ target, text });
     return {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId: 'm1',
     };
   }
@@ -75,40 +56,24 @@ class FakeProvider implements IMProvider {
     this.embeds.push({ target, embed });
     return {
       provider: this.name,
-      channelId: target.channelId,
-      threadId: target.threadId,
+      sessionId: target.sessionId,
       messageId: 'm2',
     };
   }
   async editEmbed(): Promise<void> {}
   async sendTyping(): Promise<void> {}
 
-  async renderEvent(
-    _target: IMTarget,
-    event: AgentEvent,
-    state: RenderState
-  ): Promise<RenderState> {
+  async renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState> {
     this.rendered.push(event);
     if (event.type === 'text') {
-      state.replyMessageRef = await this.sendText(_target, event.text);
+      state.replyMessageRef = await this.sendText(target, event.text);
     }
     return state;
   }
 
   async emitMessage(msg: IMMessage): Promise<void> {
-    for (const handler of this.handlers.message) {
+    for (const handler of this.handlers) {
       await handler(msg);
-    }
-  }
-
-  async emitThreadCreate(thread: { id: string; channelId: string; name: string }): Promise<void> {
-    const imThread: IMThread = {
-      ...thread,
-      provider: this.name,
-      createdAt: new Date(),
-    };
-    for (const handler of this.handlers.threadCreate) {
-      await handler(imThread);
     }
   }
 }
@@ -148,7 +113,7 @@ function makeMsg(content: string, overrides: Partial<IMMessage> = {}): IMMessage
   return {
     id: 'msg-1',
     provider: 'fake',
-    channelId: 'ch-1',
+    sessionId: 'session-1',
     authorId: 'user-1',
     authorName: 'tester',
     content,
@@ -166,7 +131,7 @@ describe('LegionCore', () => {
     await cleanupStore();
   });
 
-  it('handles /workdir command and binds workdir', async () => {
+  it('handles /workdir command and binds path to session', async () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
     const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
@@ -182,7 +147,7 @@ describe('LegionCore', () => {
 
     expect(provider.sent).toContainEqual(
       expect.objectContaining({
-        target: expect.objectContaining({ channelId: 'ch-1' }),
+        target: expect.objectContaining({ sessionId: 'session-1' }),
         text: `已绑定 workdir: ${tempDir}`,
       })
     );
@@ -204,7 +169,7 @@ describe('LegionCore', () => {
 
     expect(provider.sent).toContainEqual(
       expect.objectContaining({
-        target: expect.objectContaining({ channelId: 'ch-1' }),
+        target: expect.objectContaining({ sessionId: 'session-1' }),
         text: `已绑定 workdir: ${homedir()}`,
       })
     );
@@ -319,26 +284,6 @@ describe('LegionCore', () => {
     expect(provider2.sent.some((s) => s.text.includes(tempDir))).toBe(true);
   });
 
-  it('creates session on thread create without notification', async () => {
-    const provider = new FakeProvider();
-    const factory = new DefaultAgentRunnerFactory();
-    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
-    const core = new LegionCore({
-      config: makeConfig(),
-      imProvider: provider,
-      runnerFactory: factory,
-      stateStore: store,
-    });
-    await core.start();
-    await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
-    const afterWorkdir = provider.sent.length;
-
-    await provider.emitThreadCreate({ id: 'th-1', channelId: 'ch-1', name: 'fix-bug' });
-
-    expect(provider.sent.length).toBe(afterWorkdir);
-    expect(provider.sent.some((s) => s.text.includes('新的 Session'))).toBe(false);
-  });
-
   it('sets session agent via /agent', async () => {
     const provider = new FakeProvider();
     const factory = new DefaultAgentRunnerFactory();
@@ -356,27 +301,6 @@ describe('LegionCore', () => {
     await provider.emitMessage(makeMsg('/agent claude-code'));
 
     expect(provider.sent.some((s) => s.text === '已切换到 session agent: claude-code')).toBe(true);
-  });
-
-  it('sets workdir agent via /agent --workdir', async () => {
-    const provider = new FakeProvider();
-    const factory = new DefaultAgentRunnerFactory();
-    factory.register('kimi-code', () => new FakeRunner([]));
-    factory.register('claude-code', () => new FakeRunner([]));
-    const store = new JsonStateStore({ path: join(tempDir, 'state.json') });
-    const core = new LegionCore({
-      config: makeConfig(),
-      imProvider: provider,
-      runnerFactory: factory,
-      stateStore: store,
-    });
-    await core.start();
-    await provider.emitMessage(makeMsg(`/workdir ${tempDir}`));
-    await provider.emitMessage(makeMsg('/agent --workdir claude-code'));
-
-    expect(provider.sent.some((s) => s.text === '已设置 workdir 默认 agent: claude-code')).toBe(
-      true
-    );
   });
 
   it('sets global agent via /agent --global and persists config', async () => {
