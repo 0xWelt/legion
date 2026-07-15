@@ -7,6 +7,7 @@ import type {
   IMTarget,
   IMEmbed,
   RenderState,
+  Session,
 } from '@0xwelt/legion-api';
 import type { WebUIConfig } from './types.js';
 import type { WebUIServer } from './server.js';
@@ -108,5 +109,13 @@ export class WebUIProvider implements IMProvider {
       event,
     });
     return state;
+  }
+
+  async updateSession(target: IMTarget, session: Session): Promise<void> {
+    this.server.broadcast({
+      type: 'session-update',
+      target,
+      session,
+    });
   }
 }

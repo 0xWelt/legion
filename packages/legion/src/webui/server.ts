@@ -19,7 +19,8 @@ export type ServerMessage =
   | { type: 'embed'; target: unknown; embed: unknown; messageId: string }
   | { type: 'edit-embed'; ref: unknown; embed: unknown }
   | { type: 'typing' }
-  | { type: 'agent-event'; target: unknown; event: unknown };
+  | { type: 'agent-event'; target: unknown; event: unknown }
+  | { type: 'session-update'; target: unknown; session: unknown };
 
 type MessageHandler = (payload: ClientMessagePayload) => void;
 

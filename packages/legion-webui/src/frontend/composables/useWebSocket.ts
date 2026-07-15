@@ -7,6 +7,7 @@ type EventName =
   | 'edit-embed'
   | 'typing'
   | 'agent-event'
+  | 'session-update'
   | 'commands';
 type Handler = (payload: unknown) => void;
 
@@ -25,8 +26,19 @@ export function useWebSocket() {
     }
   }
 
+  const pending = ref<Record<string, unknown>[]>([]);
+
+  function flush() {
+    if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return;
+    while (pending.value.length > 0) {
+      const msg = pending.value.shift();
+      if (msg) ws.value.send(JSON.stringify(msg));
+    }
+  }
+
   function send(payload: Record<string, unknown>) {
-    ws.value?.send(JSON.stringify(payload));
+    pending.value.push(payload);
+    flush();
   }
 
   onMounted(() => {
@@ -35,6 +47,7 @@ export function useWebSocket() {
     const socket = new WebSocket(
       `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`
     );
+    socket.onopen = () => flush();
     socket.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data) as { type: EventName; [key: string]: unknown };
