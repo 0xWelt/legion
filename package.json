@@ -17,7 +17,7 @@
     "build": "vp run -r build",
     "changeset": "changeset",
     "dev": "tsx watch --watch-path=packages packages/legion/src/bootstrap.ts",
-    "dev:webui": "concurrently -k -n backend,frontend \"tsx watch --watch-path=packages packages/legion/src/bootstrap.ts\" \"vp dev -- packages/legion-webui\"",
+    "dev:webui": "concurrently -k -n backend,frontend \"tsx watch --watch-path=packages packages/legion/src/bootstrap.ts\" \"pnpm --filter @0xwelt/legion-webui dev\"",
     "prepare": "vp config",
     "publish-packages": "vp run -r build && cd packages/legion && npm publish --dry-run && cd ../.. && vp exec changeset publish",
     "start": "node packages/legion/dist/bootstrap.mjs",

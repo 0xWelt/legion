@@ -5,6 +5,7 @@ import type { Session, ChatMessage } from '../types.js';
 
 const props = defineProps<{
   session?: Session;
+  sessionId?: string | null;
   messages: ChatMessage[];
 }>();
 
@@ -15,7 +16,7 @@ const emit = defineEmits<{
 const input = ref('');
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const messagesContainer = ref<HTMLDivElement | null>(null);
-const disabled = computed(() => !props.session);
+const disabled = computed(() => !props.sessionId);
 
 function submit() {
   const text = input.value.trim();
@@ -54,7 +55,9 @@ watch(
 <template>
   <div class="chat-pane">
     <header class="chat-header">
-      <div class="title">{{ session?.name ?? 'Select or create a session' }}</div>
+      <div class="title">
+        {{ session?.name ?? (sessionId ? 'New session' : 'Select or create a session') }}
+      </div>
       <div v-if="session" class="meta">
         <span class="badge">{{ session.agent }}</span>
         <span v-if="session.path" class="path" :title="session.path">{{ session.path }}</span>
@@ -62,7 +65,7 @@ watch(
     </header>
 
     <div ref="messagesContainer" class="messages">
-      <div v-if="!session" class="empty">
+      <div v-if="!sessionId" class="empty">
         <div class="empty-icon">💬</div>
         <div class="empty-title">Select a session from the sidebar or start a new one.</div>
         <div class="empty-sub">
