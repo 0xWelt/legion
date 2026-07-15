@@ -20,6 +20,7 @@
     { "path": "./packages/legion-codex" },
     { "path": "./packages/legion-discord" },
     { "path": "./packages/legion-lark" },
-    { "path": "./tsconfig.bootstrap.json" }
+    { "path": "./tsconfig.bootstrap.json" },
+    { "path": "./tests" }
   ]
 }

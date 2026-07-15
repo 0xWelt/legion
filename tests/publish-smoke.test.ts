@@ -9,7 +9,7 @@ const LEGION_DIR = join(ROOT_DIR, 'packages', 'legion');
 const BOOTSTRAP_FILE = join(LEGION_DIR, 'dist', 'bootstrap.mjs');
 
 describe('publish smoke', () => {
-  it('published tarball installs and runs through npm bin symlink', () => {
+  it('published tarball installs and runs through npm bin symlink', { timeout: 60000 }, () => {
     if (!existsSync(BOOTSTRAP_FILE)) {
       throw new Error('dist/bootstrap.mjs not found; run `vp run -r build` before this e2e test');
     }

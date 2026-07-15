@@ -174,6 +174,14 @@ onMounted(async () => {
 
 function createSession() {
   const sessionId = `webui-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  sessions.value.push({
+    id: sessionId,
+    provider: 'webui',
+    name: 'New session',
+    path: '',
+    agent: '',
+    status: 'idle',
+  });
   activeSession.value = sessionId;
   view.value = 'chat';
 }
@@ -213,6 +221,7 @@ function selectSession(sessionId: string) {
       <ChatPane
         v-if="view === 'chat'"
         :session="webuiSessions.find((s) => s.id === activeSession)"
+        :session-id="activeSession"
         :messages="messages.filter((m) => m.sessionId === activeSession)"
         @send="send"
       />
