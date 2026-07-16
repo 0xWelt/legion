@@ -251,11 +251,13 @@ body {
   display: flex;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
 }
 .main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 </style>
