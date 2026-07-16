@@ -15,6 +15,7 @@ interface ServiceStatus {
 interface ProviderInfo {
   name: string;
   configured: boolean;
+  connected?: boolean;
   summary: string;
 }
 
@@ -459,6 +460,13 @@ function statusClass(active?: string): string {
                 <span class="badge" :class="p.configured ? 'ok' : 'warn'">
                   {{ p.configured ? 'configured' : 'not configured' }}
                 </span>
+                <span
+                  v-if="p.connected !== undefined"
+                  class="badge"
+                  :class="p.connected ? 'ok' : 'error'"
+                >
+                  {{ p.connected ? 'connected' : 'disconnected' }}
+                </span>
                 <span class="provider-summary">{{ p.summary }}</span>
                 <span class="chevron" :class="{ expanded: !providerCollapsed[p.name] }">▶</span>
               </button>
@@ -764,6 +772,11 @@ h1 {
 .badge.warn {
   background: rgba(210, 153, 34, 0.15);
   color: #f0883e;
+}
+
+.badge.error {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
 }
 
 .ok {

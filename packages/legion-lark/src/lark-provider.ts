@@ -56,6 +56,28 @@ export class LarkProvider implements IMProvider {
     };
   }
 
+  async checkConnection(): Promise<boolean> {
+    if (!this.options.appId || !this.options.appSecret) return false;
+    try {
+      const client = new lark.Client({
+        appId: this.options.appId,
+        appSecret: this.options.appSecret,
+        loggerLevel: lark.LoggerLevel.error,
+      });
+      const res = await client.request({
+        method: 'POST',
+        url: 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal',
+        data: {
+          app_id: this.options.appId,
+          app_secret: this.options.appSecret,
+        },
+      });
+      return (res as { code?: number }).code === 0;
+    } catch {
+      return false;
+    }
+  }
+
   async start(): Promise<void> {
     if (this.options.mode === 'long-connection') {
       this.wsClient =

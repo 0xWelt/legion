@@ -16,6 +16,7 @@ export interface IMCommandDefinition {
 
 export interface IMProviderStatus {
   configured: boolean;
+  connected?: boolean;
   summary: string;
 }
 
@@ -44,6 +45,12 @@ export interface IMProvider {
    * provider defines what "configured" means for itself.
    */
   getStatus?(): IMProviderStatus;
+
+  /**
+   * Optional real connectivity check. Should verify that the provider's
+   * credentials actually work (e.g. by calling the platform API).
+   */
+  checkConnection?(): Promise<boolean>;
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
 

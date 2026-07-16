@@ -81,7 +81,7 @@ export interface ServerOptions {
   configPath?: string;
   loadConfig?: () => Promise<unknown>;
   saveConfig?: (config: Record<string, unknown>) => Promise<void>;
-  getProviderStatuses?: () => Array<{ name: string } & IMProviderStatus>;
+  getProviderStatuses?: () => Promise<Array<{ name: string } & IMProviderStatus>>;
   getAgentStatuses?: () => AgentStatus[];
 }
 
@@ -90,7 +90,7 @@ export class WebUIServer {
   private wss?: WebSocketServer;
   private sockets = new Set<WebSocket>();
   private messageHandler?: MessageHandler;
-  private providerStatusProvider?: () => Array<{ name: string } & IMProviderStatus>;
+  private providerStatusProvider?: () => Promise<Array<{ name: string } & IMProviderStatus>>;
   private agentStatusProvider?: () => AgentStatus[];
 
   constructor(private readonly options: ServerOptions = {}) {
@@ -98,7 +98,9 @@ export class WebUIServer {
     this.agentStatusProvider = options.getAgentStatuses;
   }
 
-  setProviderStatusProvider(provider: () => Array<{ name: string } & IMProviderStatus>): void {
+  setProviderStatusProvider(
+    provider: () => Promise<Array<{ name: string } & IMProviderStatus>>
+  ): void {
     this.providerStatusProvider = provider;
   }
 
@@ -152,7 +154,7 @@ export class WebUIServer {
       }
 
       if (req.method === 'GET' && url.pathname === '/api/providers') {
-        const providers = this.providerStatusProvider?.() ?? [];
+        const providers = (await this.providerStatusProvider?.()) ?? [];
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ providers }));
         return;

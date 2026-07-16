@@ -35,6 +35,10 @@ export class WebUIProvider implements IMProvider {
     };
   }
 
+  async checkConnection(): Promise<boolean> {
+    return true;
+  }
+
   registerCommands(commands: IMCommandDefinition[]): void {
     this.server.broadcast({ type: 'commands', commands });
   }

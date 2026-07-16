@@ -105,20 +105,32 @@ async function createIMProviders(
   // Expose all providers (including WebUI itself and unconfigured ones) to the
   // status page so users can configure providers that are not yet loaded.
   const webuiProvider = providers[0] as WebUIProvider;
-  webuiProvider.getServer().setProviderStatusProvider(() => {
-    const loaded = providers.map((p) => ({
-      name: p.name,
-      ...(p.getStatus?.() ?? { configured: true, summary: '' }),
-    }));
+  webuiProvider.getServer().setProviderStatusProvider(async () => {
+    const loaded = await Promise.all(
+      providers.map(async (p) => {
+        const status = p.getStatus?.() ?? { configured: true, summary: '' };
+        const connected = (await p.checkConnection?.()) ?? status.configured;
+        return {
+          name: p.name,
+          ...status,
+          connected,
+        };
+      })
+    );
     const loadedNames = new Set(providers.map((p) => p.name));
     const unloaded = contributions
       .filter((c) => !loadedNames.has(c.key))
       .map((c) => ({
         name: c.key,
         configured: false,
+        connected: false,
         summary: 'not configured',
       }));
-    return [...loaded, ...unloaded];
+    return [...loaded, ...unloaded].sort((a, b) => {
+      if (a.connected !== b.connected) return a.connected ? -1 : 1;
+      if (a.configured !== b.configured) return a.configured ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
   });
 
   return providers;

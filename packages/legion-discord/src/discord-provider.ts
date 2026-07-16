@@ -67,6 +67,17 @@ export class DiscordProvider implements IMProvider {
     };
   }
 
+  async checkConnection(): Promise<boolean> {
+    if (!this.options.botToken) return false;
+    try {
+      const rest = new REST({ version: '10' }).setToken(this.options.botToken);
+      await rest.get(Routes.user('@me'));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async start(): Promise<void> {
     this.client.on('messageCreate', (msg) => {
       if (msg.author.bot) return;
