@@ -163,6 +163,24 @@ onMounted(async () => {
   ws.on('agent-event', (payload: { target: { sessionId: string }; event: AgentEvent }) => {
     const key = payload.target.sessionId;
     const segments = sessionOutputs.value[key] ?? [];
+
+    if (payload.event.type === 'text' && !payload.event.delta && payload.event.text?.trim()) {
+      // Simulate streaming for complete text events by revealing the new text
+      // gradually. Kimi CLI's stream-json emits cumulative text, so we compute
+      // the delta and reveal it in small chunks.
+      const newText = payload.event.text.trim();
+      const last = segments[segments.length - 1];
+      if (last?.type === 'text') {
+        streamTextSegment(key, segments, last, newText);
+      } else {
+        const seg: OutputSegment = { type: 'text', content: '' };
+        segments.push(seg);
+        streamTextSegment(key, segments, seg, newText);
+      }
+      sessionOutputs.value[key] = segments;
+      return;
+    }
+
     applyAgentEvent(segments, payload.event);
     sessionOutputs.value[key] = segments;
 
@@ -180,6 +198,43 @@ onMounted(async () => {
     }
   });
 });
+
+const textRevealTimers = new Map<string, ReturnType<typeof setInterval>>();
+
+function streamTextSegment(
+  sessionId: string,
+  segments: OutputSegment[],
+  seg: OutputSegment,
+  fullText: string
+) {
+  const timer = textRevealTimers.get(sessionId);
+  if (timer) clearInterval(timer);
+
+  const current = seg.content ?? '';
+  if (fullText === current) return;
+
+  // If the new text is cumulative, reveal only the delta; otherwise replace.
+  const target = fullText.startsWith(current) ? current + fullText.slice(current.length) : fullText;
+  const total = target.length;
+  let index = current.length;
+  const chunkSize = Math.max(1, Math.ceil((total - index) / 60));
+
+  const newTimer = setInterval(() => {
+    index = Math.min(total, index + chunkSize);
+    seg.content = target.slice(0, index);
+
+    const content = renderOutput(segments);
+    const messageId = `agent-${sessionId}`;
+    upsertMessage(messageId, 'assistant', content, sessionId, segments);
+
+    if (index >= total) {
+      clearInterval(newTimer);
+      textRevealTimers.delete(sessionId);
+    }
+  }, 20);
+
+  textRevealTimers.set(sessionId, newTimer);
+}
 
 function createSession() {
   const sessionId = `webui-${Date.now()}-${Math.random().toString(36).slice(2)}`;
