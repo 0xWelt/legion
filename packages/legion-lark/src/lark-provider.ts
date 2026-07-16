@@ -7,6 +7,7 @@ import type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   RenderState,
 } from '@0xwelt/legion-api';
@@ -43,6 +44,16 @@ export class LarkProvider implements IMProvider {
       'im.message.receive_v1': async (data: unknown) =>
         this.handleMessageEvent(data as LarkMessageEvent),
     });
+  }
+
+  getStatus(): IMProviderStatus {
+    const configured = Boolean(this.options.appId && this.options.appSecret);
+    return {
+      configured,
+      summary: configured
+        ? `appId=${this.options.appId}, mode=${this.options.mode}`
+        : 'appId/appSecret missing',
+    };
   }
 
   async start(): Promise<void> {

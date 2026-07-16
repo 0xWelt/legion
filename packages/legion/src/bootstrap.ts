@@ -87,7 +87,8 @@ async function createIMProviders(
       (config as unknown as Record<string, unknown>).webui as WebUIConfig | undefined,
       serviceManager,
       stateStorePath,
-      configPath
+      configPath,
+      contributions
     ),
   ];
 
@@ -99,6 +100,25 @@ async function createIMProviders(
     }
   }
 
+  // Expose all providers (including WebUI itself and unconfigured ones) to the
+  // status page so users can configure providers that are not yet loaded.
+  const webuiProvider = providers[0] as WebUIProvider;
+  webuiProvider.getServer().setProviderStatusProvider(() => {
+    const loaded = providers.map((p) => ({
+      name: p.name,
+      ...(p.getStatus?.() ?? { configured: true, summary: '' }),
+    }));
+    const loadedNames = new Set(providers.map((p) => p.name));
+    const unloaded = contributions
+      .filter((c) => !loadedNames.has(c.key))
+      .map((c) => ({
+        name: c.key,
+        configured: false,
+        summary: 'not configured',
+      }));
+    return [...loaded, ...unloaded];
+  });
+
   return providers;
 }
 
@@ -106,7 +126,8 @@ function createWebUIProviderWithDeps(
   config: WebUIConfig | undefined,
   serviceManager?: ServiceManager,
   stateStorePath?: string,
-  configPath?: string
+  configPath?: string,
+  contributions?: ConfigContribution[]
 ): WebUIProvider {
   const staticRoot = resolveWebUIAssetRoot();
   if (staticRoot) {
@@ -120,6 +141,7 @@ function createWebUIProviderWithDeps(
     stateStorePath,
     configPath,
     staticRoot: staticRoot ?? undefined,
+    contributions,
   });
 }
 

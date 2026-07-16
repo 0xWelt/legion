@@ -14,6 +14,11 @@ export interface IMCommandDefinition {
   options?: IMCommandOption[];
 }
 
+export interface IMProviderStatus {
+  configured: boolean;
+  summary: string;
+}
+
 export interface IMProvider {
   name: string;
   start(): Promise<void>;
@@ -33,6 +38,12 @@ export interface IMProvider {
    * `/agent` without requiring a page refresh.
    */
   updateSession?(target: IMTarget, session: Session): Promise<void>;
+
+  /**
+   * Optional provider-specific status shown in the Web UI status page. Each
+   * provider defines what "configured" means for itself.
+   */
+  getStatus?(): IMProviderStatus;
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
 

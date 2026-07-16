@@ -45,6 +45,7 @@ export type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   RenderState,
 } from './im/types.js';

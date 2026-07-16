@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
+import type { IMProviderStatus, ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
 
 export interface ClientMessagePayload {
   sessionId: string;
@@ -76,6 +76,7 @@ export interface ServerOptions {
   configPath?: string;
   loadConfig?: () => Promise<unknown>;
   saveConfig?: (config: Record<string, unknown>) => Promise<void>;
+  getProviderStatuses?: () => Array<{ name: string } & IMProviderStatus>;
 }
 
 export class WebUIServer {
@@ -83,8 +84,15 @@ export class WebUIServer {
   private wss?: WebSocketServer;
   private sockets = new Set<WebSocket>();
   private messageHandler?: MessageHandler;
+  private providerStatusProvider?: () => Array<{ name: string } & IMProviderStatus>;
 
-  constructor(private readonly options: ServerOptions = {}) {}
+  constructor(private readonly options: ServerOptions = {}) {
+    this.providerStatusProvider = options.getProviderStatuses;
+  }
+
+  setProviderStatusProvider(provider: () => Array<{ name: string } & IMProviderStatus>): void {
+    this.providerStatusProvider = provider;
+  }
 
   onMessage(handler: MessageHandler): void {
     this.messageHandler = handler;
@@ -128,6 +136,13 @@ export class WebUIServer {
         const config = await this.readConfig();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ config, configPath: this.options.configPath }));
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/providers') {
+        const providers = this.providerStatusProvider?.() ?? [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ providers }));
         return;
       }
 

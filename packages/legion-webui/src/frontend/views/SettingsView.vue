@@ -1,9 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import type { LegionConfig, AgentConfig } from '../types.js';
+import type { LegionConfig, AgentConfig, IMProviderStatus } from '../types.js';
+
+interface ServiceStatus {
+  loaded: boolean;
+  active?: 'active' | 'inactive' | 'failed' | 'activating' | 'unknown';
+  enabled?: boolean;
+  serviceName?: string;
+  unitPath?: string;
+  version?: string;
+  mode?: 'dev' | 'npm' | 'unknown';
+}
+
+interface ProviderInfo {
+  name: string;
+  configured: boolean;
+  summary: string;
+}
 
 const config = ref<LegionConfig>({});
 const configPath = ref<string | undefined>(undefined);
+const status = ref<ServiceStatus | null>(null);
+const providers = ref<ProviderInfo[]>([]);
 const saving = ref(false);
 const saved = ref(false);
 const loading = ref(true);
@@ -31,11 +49,7 @@ const stateStorePath = computed({
 });
 
 const agents = computed(() => config.value.agents ?? {});
-const providerNames = computed(() =>
-  Object.keys(config.value)
-    .filter((k) => !SYSTEM_KEYS.has(k))
-    .sort()
-);
+const providerNames = computed(() => providers.value.map((p) => p.name).sort());
 
 function envToString(env?: Record<string, string>): string {
   if (!env) return '';
@@ -94,47 +108,58 @@ function updateAgentBinary(name: string, binary: string) {
   };
 }
 
-function addProvider() {
-  const name = `provider-${Date.now()}`;
-  providerDrafts.value[name] = '{}\n';
+function getProviderDraft(name: string): string {
+  if (providerDrafts.value[name] === undefined) {
+    const existing = config.value[name];
+    providerDrafts.value[name] = JSON.stringify(existing ?? {}, null, 2);
+  }
+  return providerDrafts.value[name];
 }
 
-function removeProvider(name: string) {
-  const next = { ...config.value };
-  delete next[name];
-  config.value = next;
-  delete providerDrafts.value[name];
+function setProviderDraft(name: string, value: string) {
+  providerDrafts.value[name] = value;
 }
 
-onMounted(async () => {
+async function fetchAll() {
+  loading.value = true;
+  error.value = '';
   try {
-    const res = await fetch('/api/config');
-    if (res.ok) {
-      const data = (await res.json()) as { config: LegionConfig; configPath?: string };
-      config.value = data.config ?? {};
-      configPath.value = data.configPath;
+    const [statusRes, configRes, providersRes] = await Promise.all([
+      fetch('/api/status'),
+      fetch('/api/config'),
+      fetch('/api/providers'),
+    ]);
+    status.value = (await statusRes.json()) as ServiceStatus;
+    const configData = (await configRes.json()) as { config: LegionConfig; configPath?: string };
+    config.value = configData.config ?? {};
+    configPath.value = configData.configPath;
+    providers.value = ((await providersRes.json()) as { providers: ProviderInfo[] }).providers;
 
-      // Seed provider JSON drafts.
-      for (const key of Object.keys(data.config ?? {})) {
-        if (!SYSTEM_KEYS.has(key)) {
-          const value = data.config?.[key];
-          providerDrafts.value[key] = JSON.stringify(value ?? {}, null, 2);
-        }
-      }
+    // Seed provider JSON drafts from current config.
+    for (const p of providers.value) {
+      const existing = configData.config?.[p.name];
+      providerDrafts.value[p.name] = JSON.stringify(existing ?? {}, null, 2);
+    }
 
-      // Seed agent env drafts.
-      for (const [name, entry] of Object.entries(data.config?.agents ?? {})) {
-        agentEnvDrafts.value[name] = envToString((entry as AgentConfig).env);
-      }
-    } else {
-      error.value = `Failed to load config: ${res.status}`;
+    // Seed agent env drafts.
+    for (const [name, entry] of Object.entries(configData.config?.agents ?? {})) {
+      agentEnvDrafts.value[name] = envToString((entry as AgentConfig).env);
     }
   } catch (e) {
     error.value = String(e);
   } finally {
     loading.value = false;
   }
-});
+}
+
+async function action(name: string) {
+  try {
+    await fetch(`/api/service/${name}`, { method: 'POST' });
+    await fetchAll();
+  } catch (e) {
+    error.value = String(e);
+  }
+}
 
 async function save() {
   saving.value = true;
@@ -159,12 +184,12 @@ async function save() {
     }
   }
 
-  for (const name of providerNames.value) {
-    const text = providerDrafts.value[name] ?? '{}';
+  for (const p of providers.value) {
+    const text = providerDrafts.value[p.name] ?? '{}';
     try {
-      payload[name] = JSON.parse(text);
+      payload[p.name] = JSON.parse(text);
     } catch (e) {
-      error.value = `Invalid JSON for provider "${name}": ${String(e)}`;
+      error.value = `Invalid JSON for provider "${p.name}": ${String(e)}`;
       saving.value = false;
       return;
     }
@@ -188,16 +213,81 @@ async function save() {
 }
 
 const rawConfig = computed(() => JSON.stringify(config.value, null, 2));
+
+onMounted(fetchAll);
+
+function statusClass(active?: string): string {
+  switch (active) {
+    case 'active':
+      return 'ok';
+    case 'failed':
+      return 'error';
+    case 'activating':
+      return 'warn';
+    case 'inactive':
+      return 'warn';
+    default:
+      return 'muted';
+  }
+}
 </script>
 
 <template>
   <div class="settings-view">
-    <h1>Settings</h1>
+    <div class="page-header">
+      <h1>Settings</h1>
+      <button class="refresh-btn" :disabled="loading" @click="fetchAll">Refresh</button>
+    </div>
 
     <div v-if="loading" class="loading">Loading configuration...</div>
     <div v-else-if="error" class="error-card">{{ error }}</div>
 
     <div v-else class="cards">
+      <!-- Gateway -->
+      <div class="card">
+        <h2>Gateway</h2>
+        <div class="status-row">
+          <span class="label">Version</span>
+          <span class="value mono">{{ status?.version ?? 'unknown' }}</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Install mode</span>
+          <span class="value badge">{{ status?.mode ?? 'unknown' }}</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Service name</span>
+          <span class="value mono">{{ status?.serviceName ?? '—' }}</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Loaded</span>
+          <span class="value" :class="status?.loaded ? 'ok' : 'warn'">
+            {{ status?.loaded ? 'Yes' : 'No' }}
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="label">Active</span>
+          <span class="value" :class="statusClass(status?.active)">{{
+            status?.active ?? 'unknown'
+          }}</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Enabled</span>
+          <span class="value" :class="status?.enabled ? 'ok' : 'warn'">
+            {{ status?.enabled ? 'Yes' : 'No' }}
+          </span>
+        </div>
+        <div v-if="status?.unitPath" class="status-row">
+          <span class="label">Unit path</span>
+          <span class="value mono path" :title="status.unitPath">{{ status.unitPath }}</span>
+        </div>
+
+        <div class="actions">
+          <button @click="action('start')">Start</button>
+          <button @click="action('stop')">Stop</button>
+          <button @click="action('restart')">Restart</button>
+        </div>
+      </div>
+
       <!-- General -->
       <div class="card">
         <h2>General</h2>
@@ -248,21 +338,25 @@ const rawConfig = computed(() => JSON.stringify(config.value, null, 2));
         </div>
       </div>
 
-      <!-- Providers -->
+      <!-- IM Providers -->
       <div class="card">
-        <div class="card-header">
-          <h2>IM Providers</h2>
-          <button class="small" @click="addProvider">+ Add</button>
-        </div>
+        <h2>IM Providers</h2>
 
-        <div v-if="providerNames.length === 0" class="empty">No providers configured.</div>
-
-        <div v-for="name in providerNames" :key="name" class="provider-row">
+        <div v-for="p in providers" :key="p.name" class="provider-row">
           <div class="provider-header">
-            <span class="provider-name">{{ name }}</span>
-            <button class="danger small" @click="removeProvider(name)">Remove</button>
+            <span class="provider-name">{{ p.name }}</span>
+            <span class="badge" :class="p.configured ? 'ok' : 'warn'">
+              {{ p.configured ? 'configured' : 'incomplete' }}
+            </span>
           </div>
-          <textarea v-model="providerDrafts[name]" rows="6" class="code" spellcheck="false" />
+          <div v-if="p.summary" class="provider-summary">{{ p.summary }}</div>
+          <textarea
+            :value="getProviderDraft(p.name)"
+            rows="6"
+            class="code"
+            spellcheck="false"
+            @input="setProviderDraft(p.name, ($event.target as HTMLTextAreaElement).value)"
+          />
         </div>
       </div>
 
@@ -288,10 +382,28 @@ const rawConfig = computed(() => JSON.stringify(config.value, null, 2));
   max-width: 960px;
   box-sizing: border-box;
 }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
 h1 {
-  margin: 0 0 20px;
+  margin: 0;
   color: #e6edf3;
   font-size: 22px;
+}
+.refresh-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.refresh-btn:hover:not(:disabled) {
+  background: #30363d;
 }
 .loading {
   color: #8b949e;
@@ -317,7 +429,7 @@ h1 {
   min-width: 0;
 }
 .card h2 {
-  margin: 0;
+  margin: 0 0 14px;
   font-size: 14px;
   color: #8b949e;
   text-transform: uppercase;
@@ -399,6 +511,81 @@ button.danger:hover:not(:disabled) {
   color: #8b949e;
   font-size: 13px;
 }
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #21262d;
+}
+.status-row:last-child {
+  border-bottom: none;
+}
+.label {
+  color: #8b949e;
+  font-size: 14px;
+}
+.value {
+  font-size: 14px;
+  color: #c9d1d9;
+  text-align: right;
+  word-break: break-word;
+  min-width: 0;
+}
+.value.path {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(31, 111, 235, 0.15);
+  color: #58a6ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge.ok {
+  background: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+}
+.badge.warn {
+  background: rgba(210, 153, 34, 0.15);
+  color: #f0883e;
+}
+.ok {
+  color: #3fb950;
+}
+.warn {
+  color: #f0883e;
+}
+.error {
+  color: #f85149;
+}
+.muted {
+  color: #8b949e;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.actions button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #1f6feb;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.actions button:hover {
+  background: #388bfd;
+}
 .info-row {
   display: flex;
   justify-content: space-between;
@@ -458,11 +645,16 @@ button.danger:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .provider-name {
   font-weight: 600;
   font-size: 14px;
   color: #e6edf3;
+}
+.provider-summary {
+  font-size: 12px;
+  color: #8b949e;
+  margin-bottom: 10px;
 }
 </style>

@@ -30,6 +30,11 @@ export interface AgentConfig {
   [key: string]: unknown;
 }
 
+export interface IMProviderStatus {
+  configured: boolean;
+  summary: string;
+}
+
 export interface LegionConfig {
   defaultAgent?: string;
   stateStore?: { path: string };

@@ -4,6 +4,7 @@ import type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   IMEmbed,
   RenderState,
@@ -22,6 +23,17 @@ export class WebUIProvider implements IMProvider {
     private readonly server: WebUIServer,
     private readonly staticRoot?: string
   ) {}
+
+  getServer(): WebUIServer {
+    return this.server;
+  }
+
+  getStatus(): IMProviderStatus {
+    return {
+      configured: true,
+      summary: `host=${this.config.host ?? '127.0.0.1'}, port=${this.config.port ?? 18788}`,
+    };
+  }
 
   registerCommands(commands: IMCommandDefinition[]): void {
     this.server.broadcast({ type: 'commands', commands });

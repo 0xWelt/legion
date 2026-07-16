@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue';
 import Sidebar from './components/Sidebar.vue';
 import ChatPane from './components/ChatPane.vue';
-import StatusView from './views/StatusView.vue';
 import SettingsView from './views/SettingsView.vue';
 import { useWebSocket } from './composables/useWebSocket.js';
 import type { Session, ChatMessage, OutputSegment, LegionConfig } from './types.js';
@@ -18,7 +17,7 @@ type AgentEvent =
   | { type: 'session_init' }
   | { type: 'usage' };
 
-const view = ref<'chat' | 'status' | 'settings'>('chat');
+const view = ref<'chat' | 'settings'>('chat');
 const activeSession = ref<string | null>(null);
 const sessions = ref<Session[]>([]);
 const messages = ref<ChatMessage[]>([]);
@@ -236,7 +235,6 @@ function selectSession(sessionId: string) {
         :config="config"
         @send="send"
       />
-      <StatusView v-else-if="view === 'status'" />
       <SettingsView v-else-if="view === 'settings'" />
     </main>
   </div>

@@ -4,13 +4,13 @@ import type { Session } from '../types.js';
 defineProps<{
   sessions: Session[];
   activeSession: string | null;
-  currentView: 'chat' | 'status' | 'settings';
+  currentView: 'chat' | 'settings';
 }>();
 
 const emit = defineEmits<{
   (e: 'select-session', sessionId: string): void;
   (e: 'create-session'): void;
-  (e: 'switch-view', view: 'chat' | 'status' | 'settings'): void;
+  (e: 'switch-view', view: 'chat' | 'settings'): void;
 }>();
 
 function statusClass(status: string): string {
@@ -30,9 +30,6 @@ function statusClass(status: string): string {
         <span class="nav-icon">💬</span>
         <span class="nav-label">Chat</span>
         <span class="chevron" :class="{ expanded: currentView === 'chat' }">▶</span>
-      </button>
-      <button :class="{ active: currentView === 'status' }" @click="emit('switch-view', 'status')">
-        <span class="nav-icon">📊</span> Status
       </button>
       <button
         :class="{ active: currentView === 'settings' }"
