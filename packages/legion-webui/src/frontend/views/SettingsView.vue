@@ -18,6 +18,47 @@ interface ProviderInfo {
   summary: string;
 }
 
+interface FieldDef {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'number' | 'select';
+  options?: string[];
+  placeholder?: string;
+}
+
+const PROVIDER_FIELDS: Record<string, FieldDef[]> = {
+  webui: [
+    { key: 'host', label: 'Host', type: 'text', placeholder: '127.0.0.1' },
+    { key: 'port', label: 'Port', type: 'number', placeholder: '18788' },
+    { key: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'optional' },
+  ],
+  discord: [
+    { key: 'botToken', label: 'Bot Token', type: 'password', placeholder: 'MTIz...' },
+    { key: 'allowedGuildId', label: 'Allowed Guild ID', type: 'text', placeholder: '1234567890' },
+    { key: 'editDebounceMs', label: 'Edit Debounce (ms)', type: 'number', placeholder: '1000' },
+  ],
+  lark: [
+    { key: 'appId', label: 'App ID', type: 'text', placeholder: 'cli_xxx' },
+    { key: 'appSecret', label: 'App Secret', type: 'password' },
+    { key: 'mode', label: 'Mode', type: 'select', options: ['webhook', 'long-connection'] },
+    { key: 'webhookPort', label: 'Webhook Port', type: 'number', placeholder: '3000' },
+    { key: 'webhookPath', label: 'Webhook Path', type: 'text', placeholder: '/webhook/event' },
+    { key: 'encryptKey', label: 'Encrypt Key', type: 'password', placeholder: 'optional' },
+    {
+      key: 'verificationToken',
+      label: 'Verification Token',
+      type: 'password',
+      placeholder: 'optional',
+    },
+  ],
+};
+
+const PROVIDER_ICONS: Record<string, string> = {
+  webui: '🌐',
+  discord: '🎮',
+  lark: '🐦',
+};
+
 const config = ref<LegionConfig>({});
 const configPath = ref<string | undefined>(undefined);
 const status = ref<ServiceStatus | null>(null);
@@ -26,10 +67,16 @@ const saving = ref(false);
 const saved = ref(false);
 const loading = ref(true);
 const error = ref('');
-const providerDrafts = ref<Record<string, string>>({});
+const providerData = ref<Record<string, Record<string, unknown>>>({});
 const agentEnvDrafts = ref<Record<string, string>>({});
-
-const SYSTEM_KEYS = new Set(['defaultAgent', 'agents', 'stateStore']);
+const collapsed = ref<Record<string, boolean>>({
+  gateway: false,
+  general: false,
+  agents: false,
+  providers: false,
+  config: false,
+});
+const providerCollapsed = ref<Record<string, boolean>>({});
 
 const defaultAgent = computed({
   get: () => config.value.defaultAgent ?? '',
@@ -49,7 +96,6 @@ const stateStorePath = computed({
 });
 
 const agents = computed(() => config.value.agents ?? {});
-const providerNames = computed(() => providers.value.map((p) => p.name).sort());
 
 function envToString(env?: Record<string, string>): string {
   if (!env) return '';
@@ -108,16 +154,23 @@ function updateAgentBinary(name: string, binary: string) {
   };
 }
 
-function getProviderDraft(name: string): string {
-  if (providerDrafts.value[name] === undefined) {
-    const existing = config.value[name];
-    providerDrafts.value[name] = JSON.stringify(existing ?? {}, null, 2);
-  }
-  return providerDrafts.value[name];
+function getProviderField(name: string, key: string): unknown {
+  return providerData.value[name]?.[key];
 }
 
-function setProviderDraft(name: string, value: string) {
-  providerDrafts.value[name] = value;
+function setProviderField(name: string, key: string, value: unknown) {
+  if (!providerData.value[name]) {
+    providerData.value[name] = {};
+  }
+  providerData.value[name][key] = value;
+}
+
+function toggleSection(key: string) {
+  collapsed.value[key] = !collapsed.value[key];
+}
+
+function toggleProvider(name: string) {
+  providerCollapsed.value[name] = !providerCollapsed.value[name];
 }
 
 async function fetchAll() {
@@ -135,10 +188,14 @@ async function fetchAll() {
     configPath.value = configData.configPath;
     providers.value = ((await providersRes.json()) as { providers: ProviderInfo[] }).providers;
 
-    // Seed provider JSON drafts from current config.
+    // Seed provider data from current config.
     for (const p of providers.value) {
       const existing = configData.config?.[p.name];
-      providerDrafts.value[p.name] = JSON.stringify(existing ?? {}, null, 2);
+      providerData.value[p.name] =
+        typeof existing === 'object' && existing !== null
+          ? { ...(existing as Record<string, unknown>) }
+          : {};
+      providerCollapsed.value[p.name] = !p.configured;
     }
 
     // Seed agent env drafts.
@@ -166,7 +223,6 @@ async function save() {
   saved.value = false;
   error.value = '';
 
-  // Build clean payload from current UI state.
   const payload: LegionConfig = {
     ...(config.value.defaultAgent ? { defaultAgent: config.value.defaultAgent } : {}),
     stateStore: config.value.stateStore ?? { path: '~/.legion/state.json' },
@@ -185,13 +241,14 @@ async function save() {
   }
 
   for (const p of providers.value) {
-    const text = providerDrafts.value[p.name] ?? '{}';
-    try {
-      payload[p.name] = JSON.parse(text);
-    } catch (e) {
-      error.value = `Invalid JSON for provider "${p.name}": ${String(e)}`;
-      saving.value = false;
-      return;
+    const data = providerData.value[p.name] ?? {};
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v === '' || v === undefined || v === null) continue;
+      cleaned[k] = v;
+    }
+    if (Object.keys(cleaned).length > 0) {
+      payload[p.name] = cleaned;
     }
   }
 
@@ -236,142 +293,256 @@ function statusClass(active?: string): string {
   <div class="settings-view">
     <div class="page-header">
       <h1>Settings</h1>
-      <button class="refresh-btn" :disabled="loading" @click="fetchAll">Refresh</button>
+      <button class="refresh-btn" :disabled="loading" @click="fetchAll">
+        <span class="btn-icon">↻</span> Refresh
+      </button>
     </div>
 
     <div v-if="loading" class="loading">Loading configuration...</div>
     <div v-else-if="error" class="error-card">{{ error }}</div>
 
-    <div v-else class="cards">
+    <div v-else class="sections">
       <!-- Gateway -->
-      <div class="card">
-        <h2>Gateway</h2>
-        <div class="status-row">
-          <span class="label">Version</span>
-          <span class="value mono">{{ status?.version ?? 'unknown' }}</span>
+      <section class="section">
+        <button class="section-header" @click="toggleSection('gateway')">
+          <span class="section-icon">🖥️</span>
+          <span class="section-title">Gateway</span>
+          <span class="section-subtitle">{{ status?.mode ?? 'unknown' }} mode</span>
+          <span class="chevron" :class="{ expanded: !collapsed.gateway }">▶</span>
+        </button>
+        <div class="section-body" :class="{ collapsed: collapsed.gateway }">
+          <div class="card-content">
+            <div class="status-grid">
+              <div class="status-item">
+                <span class="status-label">Version</span>
+                <span class="status-value mono">{{ status?.version ?? 'unknown' }}</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Install mode</span>
+                <span class="badge">{{ status?.mode ?? 'unknown' }}</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Service name</span>
+                <span class="status-value mono">{{ status?.serviceName ?? '—' }}</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Loaded</span>
+                <span :class="status?.loaded ? 'ok' : 'warn'">{{
+                  status?.loaded ? 'Yes' : 'No'
+                }}</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Active</span>
+                <span :class="statusClass(status?.active)">{{ status?.active ?? 'unknown' }}</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Enabled</span>
+                <span :class="status?.enabled ? 'ok' : 'warn'">{{
+                  status?.enabled ? 'Yes' : 'No'
+                }}</span>
+              </div>
+              <div v-if="status?.unitPath" class="status-item full-width">
+                <span class="status-label">Unit path</span>
+                <span class="status-value mono path" :title="status.unitPath">{{
+                  status.unitPath
+                }}</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn secondary" @click="action('start')">Start</button>
+              <button class="btn secondary" @click="action('stop')">Stop</button>
+              <button class="btn secondary" @click="action('restart')">Restart</button>
+            </div>
+          </div>
         </div>
-        <div class="status-row">
-          <span class="label">Install mode</span>
-          <span class="value badge">{{ status?.mode ?? 'unknown' }}</span>
-        </div>
-        <div class="status-row">
-          <span class="label">Service name</span>
-          <span class="value mono">{{ status?.serviceName ?? '—' }}</span>
-        </div>
-        <div class="status-row">
-          <span class="label">Loaded</span>
-          <span class="value" :class="status?.loaded ? 'ok' : 'warn'">
-            {{ status?.loaded ? 'Yes' : 'No' }}
-          </span>
-        </div>
-        <div class="status-row">
-          <span class="label">Active</span>
-          <span class="value" :class="statusClass(status?.active)">{{
-            status?.active ?? 'unknown'
-          }}</span>
-        </div>
-        <div class="status-row">
-          <span class="label">Enabled</span>
-          <span class="value" :class="status?.enabled ? 'ok' : 'warn'">
-            {{ status?.enabled ? 'Yes' : 'No' }}
-          </span>
-        </div>
-        <div v-if="status?.unitPath" class="status-row">
-          <span class="label">Unit path</span>
-          <span class="value mono path" :title="status.unitPath">{{ status.unitPath }}</span>
-        </div>
-
-        <div class="actions">
-          <button @click="action('start')">Start</button>
-          <button @click="action('stop')">Stop</button>
-          <button @click="action('restart')">Restart</button>
-        </div>
-      </div>
+      </section>
 
       <!-- General -->
-      <div class="card">
-        <h2>General</h2>
-
-        <label>
-          Default Agent
-          <input v-model="defaultAgent" type="text" placeholder="e.g. kimi-code" />
-        </label>
-
-        <label>
-          State Store Path
-          <input v-model="stateStorePath" type="text" placeholder="~/.legion/state.json" />
-        </label>
-      </div>
+      <section class="section">
+        <button class="section-header" @click="toggleSection('general')">
+          <span class="section-icon">⚙️</span>
+          <span class="section-title">General</span>
+          <span class="section-subtitle">Default agent and storage</span>
+          <span class="chevron" :class="{ expanded: !collapsed.general }">▶</span>
+        </button>
+        <div class="section-body" :class="{ collapsed: collapsed.general }">
+          <div class="card-content">
+            <div class="form-field">
+              <label>Default Agent</label>
+              <input v-model="defaultAgent" type="text" placeholder="e.g. kimi-code" />
+            </div>
+            <div class="form-field">
+              <label>State Store Path</label>
+              <input v-model="stateStorePath" type="text" placeholder="~/.legion/state.json" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Agents -->
-      <div class="card">
-        <div class="card-header">
-          <h2>Agents</h2>
-          <button class="small" @click="addAgent">+ Add</button>
+      <section class="section">
+        <button class="section-header" @click="toggleSection('agents')">
+          <span class="section-icon">🤖</span>
+          <span class="section-title">Agents</span>
+          <span class="section-subtitle">{{ Object.keys(agents).length }} configured</span>
+          <span class="chevron" :class="{ expanded: !collapsed.agents }">▶</span>
+        </button>
+        <div class="section-body" :class="{ collapsed: collapsed.agents }">
+          <div class="card-content">
+            <div class="section-actions">
+              <button class="btn small" @click="addAgent">+ Add Agent</button>
+            </div>
+            <div v-if="Object.keys(agents).length === 0" class="empty">
+              No custom agents configured.
+            </div>
+            <div v-for="(entry, name) in agents" :key="name" class="agent-card">
+              <div class="agent-header">
+                <input
+                  :value="name"
+                  type="text"
+                  class="agent-name-input"
+                  @change="updateAgentName(name, ($event.target as HTMLInputElement).value)"
+                />
+                <button class="btn danger small" @click="removeAgent(name)">Remove</button>
+              </div>
+              <div class="form-field">
+                <label>Binary</label>
+                <input
+                  :value="(entry as AgentConfig).binary ?? ''"
+                  type="text"
+                  placeholder="optional binary path"
+                  @input="updateAgentBinary(name, ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+              <div class="form-field">
+                <label>Environment (KEY=VALUE per line)</label>
+                <textarea v-model="agentEnvDrafts[name]" rows="3" placeholder="API_KEY=xxx" />
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div v-if="Object.keys(agents).length === 0" class="empty">No custom agents.</div>
-
-        <div v-for="(entry, name) in agents" :key="name" class="agent-row">
-          <div class="agent-field">
-            <label>Name</label>
-            <input
-              :value="name"
-              type="text"
-              @change="updateAgentName(name, ($event.target as HTMLInputElement).value)"
-            />
-          </div>
-          <div class="agent-field">
-            <label>Binary</label>
-            <input
-              :value="(entry as AgentConfig).binary ?? ''"
-              type="text"
-              placeholder="optional binary path"
-              @input="updateAgentBinary(name, ($event.target as HTMLInputElement).value)"
-            />
-          </div>
-          <div class="agent-field">
-            <label>Environment (KEY=VALUE per line)</label>
-            <textarea v-model="agentEnvDrafts[name]" rows="3" placeholder="API_KEY=xxx" />
-          </div>
-          <button class="danger small" @click="removeAgent(name)">Remove</button>
-        </div>
-      </div>
+      </section>
 
       <!-- IM Providers -->
-      <div class="card">
-        <h2>IM Providers</h2>
-
-        <div v-for="p in providers" :key="p.name" class="provider-row">
-          <div class="provider-header">
-            <span class="provider-name">{{ p.name }}</span>
-            <span class="badge" :class="p.configured ? 'ok' : 'warn'">
-              {{ p.configured ? 'configured' : 'incomplete' }}
-            </span>
+      <section class="section">
+        <button class="section-header" @click="toggleSection('providers')">
+          <span class="section-icon">🔌</span>
+          <span class="section-title">IM Providers</span>
+          <span class="section-subtitle">{{ providers.length }} available</span>
+          <span class="chevron" :class="{ expanded: !collapsed.providers }">▶</span>
+        </button>
+        <div class="section-body" :class="{ collapsed: collapsed.providers }">
+          <div class="card-content">
+            <div v-for="p in providers" :key="p.name" class="provider-card">
+              <button class="provider-header" @click="toggleProvider(p.name)">
+                <span class="provider-icon">{{ PROVIDER_ICONS[p.name] ?? '🔌' }}</span>
+                <span class="provider-name">{{ p.name }}</span>
+                <span class="badge" :class="p.configured ? 'ok' : 'warn'">
+                  {{ p.configured ? 'configured' : 'not configured' }}
+                </span>
+                <span class="provider-summary">{{ p.summary }}</span>
+                <span class="chevron" :class="{ expanded: !providerCollapsed[p.name] }">▶</span>
+              </button>
+              <div class="provider-body" :class="{ collapsed: providerCollapsed[p.name] }">
+                <div class="provider-form">
+                  <template v-if="PROVIDER_FIELDS[p.name]">
+                    <div
+                      v-for="field in PROVIDER_FIELDS[p.name]"
+                      :key="field.key"
+                      class="form-field"
+                    >
+                      <label>{{ field.label }}</label>
+                      <select
+                        v-if="field.type === 'select'"
+                        :value="getProviderField(p.name, field.key) ?? ''"
+                        @change="
+                          setProviderField(
+                            p.name,
+                            field.key,
+                            ($event.target as HTMLSelectElement).value || undefined
+                          )
+                        "
+                      >
+                        <option value="">—</option>
+                        <option v-for="opt in field.options" :key="opt" :value="opt">
+                          {{ opt }}
+                        </option>
+                      </select>
+                      <input
+                        v-else-if="field.type === 'number'"
+                        type="number"
+                        :value="getProviderField(p.name, field.key) ?? ''"
+                        :placeholder="field.placeholder"
+                        @input="
+                          setProviderField(
+                            p.name,
+                            field.key,
+                            Number(($event.target as HTMLInputElement).value) || undefined
+                          )
+                        "
+                      />
+                      <input
+                        v-else
+                        :type="field.type"
+                        :value="getProviderField(p.name, field.key) ?? ''"
+                        :placeholder="field.placeholder"
+                        @input="
+                          setProviderField(
+                            p.name,
+                            field.key,
+                            ($event.target as HTMLInputElement).value || undefined
+                          )
+                        "
+                      />
+                    </div>
+                  </template>
+                  <div v-else class="form-field">
+                    <label>Raw JSON</label>
+                    <textarea
+                      :value="JSON.stringify(providerData[p.name] ?? {}, null, 2)"
+                      rows="6"
+                      class="code"
+                      spellcheck="false"
+                      @input="
+                        try {
+                          providerData[p.name] = JSON.parse(
+                            ($event.target as HTMLTextAreaElement).value
+                          );
+                        } catch {
+                          // keep raw text for invalid JSON
+                        }
+                      "
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div v-if="p.summary" class="provider-summary">{{ p.summary }}</div>
-          <textarea
-            :value="getProviderDraft(p.name)"
-            rows="6"
-            class="code"
-            spellcheck="false"
-            @input="setProviderDraft(p.name, ($event.target as HTMLTextAreaElement).value)"
-          />
         </div>
-      </div>
+      </section>
 
-      <!-- Raw config + save -->
-      <div class="card">
-        <h2>Configuration file</h2>
-        <div class="info-row">
-          <span class="info-label">Path</span>
-          <span class="info-value mono" :title="configPath">{{ configPath ?? 'unknown' }}</span>
+      <!-- Configuration file -->
+      <section class="section">
+        <button class="section-header" @click="toggleSection('config')">
+          <span class="section-icon">📄</span>
+          <span class="section-title">Configuration file</span>
+          <span class="section-subtitle mono">{{ configPath ?? 'unknown' }}</span>
+          <span class="chevron" :class="{ expanded: !collapsed.config }">▶</span>
+        </button>
+        <div class="section-body" :class="{ collapsed: collapsed.config }">
+          <div class="card-content">
+            <pre class="raw-config">{{ rawConfig }}</pre>
+          </div>
         </div>
-        <pre class="raw-config">{{ rawConfig }}</pre>
+      </section>
+    </div>
 
-        <div v-if="saved" class="saved">Saved successfully.</div>
-        <button :disabled="saving" @click="save">{{ saving ? 'Saving...' : 'Save' }}</button>
-      </div>
+    <!-- Sticky save bar -->
+    <div class="save-bar">
+      <div v-if="saved" class="saved">Saved successfully.</div>
+      <button class="btn primary" :disabled="saving" @click="save">
+        {{ saving ? 'Saving...' : 'Save Changes' }}
+      </button>
     </div>
   </div>
 </template>
@@ -379,35 +550,49 @@ function statusClass(active?: string): string {
 <style scoped>
 .settings-view {
   padding: 24px;
-  max-width: 960px;
+  max-width: 900px;
   box-sizing: border-box;
+  padding-bottom: 80px;
 }
+
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
+
 h1 {
   margin: 0;
   color: #e6edf3;
-  font-size: 22px;
+  font-size: 24px;
+  font-weight: 600;
 }
+
 .refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
   border-radius: 8px;
   border: 1px solid #30363d;
   background: #21262d;
   color: #c9d1d9;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
+  font-size: 13px;
 }
+
 .refresh-btn:hover:not(:disabled) {
   background: #30363d;
+  border-color: #3d444d;
 }
+
 .loading {
   color: #8b949e;
+  font-size: 14px;
 }
+
 .error-card {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid rgba(248, 81, 73, 0.3);
@@ -416,43 +601,259 @@ h1 {
   border-radius: 10px;
   margin-bottom: 16px;
 }
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-.card {
+
+.section {
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 12px;
-  padding: 18px;
-  min-width: 0;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
 }
-.card h2 {
-  margin: 0 0 14px;
-  font-size: 14px;
-  color: #8b949e;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+
+.section:hover {
+  border-color: #3d444d;
 }
-.card-header {
+
+.section-header {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 12px;
+  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  color: #e6edf3;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
 }
-label {
-  display: block;
-  margin-bottom: 14px;
+
+.section-header:hover {
+  background: #1c2128;
+}
+
+.section-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.section-subtitle {
+  font-size: 12px;
+  color: #8b949e;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+
+.chevron {
+  font-size: 10px;
+  color: #8b949e;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.section-body {
+  max-height: 2000px;
+  overflow: hidden;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.2s ease;
+  opacity: 1;
+}
+
+.section-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.card-content {
+  padding: 0 20px 20px;
+  border-top: 1px solid #21262d;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.status-label {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.status-value {
+  font-size: 14px;
   color: #c9d1d9;
-  font-size: 13px;
 }
+
+.status-value.path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(31, 111, 235, 0.15);
+  color: #58a6ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.ok {
+  background: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+}
+
+.badge.warn {
+  background: rgba(210, 153, 34, 0.15);
+  color: #f0883e;
+}
+
+.ok {
+  color: #3fb950;
+}
+
+.warn {
+  color: #f0883e;
+}
+
+.error {
+  color: #f85149;
+}
+
+.muted {
+  color: #8b949e;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #1f6feb;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: #388bfd;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.secondary {
+  background: #21262d;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: #30363d;
+  border-color: #3d444d;
+}
+
+.btn.primary {
+  background: #238636;
+  font-weight: 600;
+  padding: 10px 24px;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #2ea043;
+}
+
+.btn.danger {
+  background: #da3633;
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: #f85149;
+}
+
+.btn.small {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.section-actions {
+  margin-bottom: 16px;
+}
+
+.empty {
+  color: #8b949e;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.form-field {
+  margin-bottom: 14px;
+}
+
+.form-field:last-child {
+  margin-bottom: 0;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 input,
-textarea {
+textarea,
+select {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  margin-top: 6px;
   padding: 9px 12px;
   border-radius: 8px;
   border: 1px solid #30363d;
@@ -461,200 +862,163 @@ textarea {
   font-size: 14px;
   outline: none;
   font-family: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
+
 textarea {
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+  line-height: 1.5;
 }
-textarea.code {
-  min-height: 120px;
-}
+
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: #1f6feb;
-  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
 }
-button {
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: none;
-  background: #1f6feb;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.15s ease;
-}
-button:hover:not(:disabled) {
-  background: #388bfd;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.small {
-  padding: 5px 12px;
-  font-size: 12px;
-}
-button.danger {
-  background: #da3633;
-}
-button.danger:hover:not(:disabled) {
-  background: #f85149;
-}
-.saved {
-  color: #3fb950;
+
+.agent-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 16px;
   margin-bottom: 12px;
-  font-size: 14px;
 }
-.empty {
-  color: #8b949e;
-  font-size: 13px;
-}
-.status-row {
+
+.agent-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #21262d;
+  margin-bottom: 14px;
 }
-.status-row:last-child {
-  border-bottom: none;
+
+.agent-name-input {
+  flex: 1;
+  font-weight: 600;
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 8px;
 }
-.label {
+
+.agent-name-input:hover {
+  border-color: #30363d;
+}
+
+.agent-name-input:focus {
+  border-color: #1f6feb;
+  background: #0d1117;
+}
+
+.provider-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.provider-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: #e6edf3;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.provider-header:hover {
+  background: #161b22;
+}
+
+.provider-icon {
+  font-size: 16px;
+}
+
+.provider-name {
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.provider-summary {
+  font-size: 12px;
   color: #8b949e;
-  font-size: 14px;
-}
-.value {
-  font-size: 14px;
-  color: #c9d1d9;
-  text-align: right;
-  word-break: break-word;
-  min-width: 0;
-}
-.value.path {
-  max-width: 60%;
+  margin-left: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 30%;
 }
-.badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(31, 111, 235, 0.15);
-  color: #58a6ff;
-  font-size: 12px;
-  font-weight: 600;
+
+.provider-body {
+  max-height: 1000px;
+  overflow: hidden;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.2s ease;
+  opacity: 1;
 }
-.badge.ok {
-  background: rgba(46, 160, 67, 0.15);
-  color: #3fb950;
+
+.provider-body.collapsed {
+  max-height: 0;
+  opacity: 0;
 }
-.badge.warn {
-  background: rgba(210, 153, 34, 0.15);
-  color: #f0883e;
+
+.provider-form {
+  padding: 0 16px 16px;
+  border-top: 1px solid #21262d;
 }
-.ok {
-  color: #3fb950;
-}
-.warn {
-  color: #f0883e;
-}
-.error {
-  color: #f85149;
-}
-.muted {
-  color: #8b949e;
-}
-.actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-.actions button {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  background: #1f6feb;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.actions button:hover {
-  background: #388bfd;
-}
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #21262d;
-}
-.info-label {
-  color: #8b949e;
-  font-size: 13px;
-}
-.info-value {
-  color: #c9d1d9;
-  font-size: 13px;
-  text-align: right;
-  word-break: break-all;
-  min-width: 0;
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
+
 .raw-config {
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
-  padding: 12px;
+  padding: 16px;
   color: #c9d1d9;
   font-size: 12px;
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  margin: 0 0 16px;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
-.agent-row {
-  border: 1px solid #30363d;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
-  background: #0d1117;
-}
-.agent-field {
-  margin-bottom: 10px;
-}
-.agent-field:last-child {
-  margin-bottom: 0;
-}
-.provider-row {
-  border: 1px solid #30363d;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
-  background: #0d1117;
-}
-.provider-header {
+
+.save-bar {
+  position: fixed;
+  bottom: 0;
+  left: 280px;
+  right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 16px 24px;
+  background: rgba(13, 17, 23, 0.95);
+  border-top: 1px solid #30363d;
+  backdrop-filter: blur(8px);
+  z-index: 10;
 }
-.provider-name {
-  font-weight: 600;
+
+.saved {
+  color: #3fb950;
   font-size: 14px;
-  color: #e6edf3;
 }
-.provider-summary {
-  font-size: 12px;
-  color: #8b949e;
-  margin-bottom: 10px;
+
+@media (max-width: 768px) {
+  .save-bar {
+    left: 0;
+  }
+  .settings-view {
+    padding-bottom: 90px;
+  }
 }
 </style>
