@@ -78,6 +78,7 @@ async function loadContributions(): Promise<{
 async function createIMProviders(
   config: LegionConfig,
   contributions: ConfigContribution[],
+  agentContributions: AgentContribution[],
   serviceManager?: ServiceManager,
   stateStorePath?: string,
   configPath?: string
@@ -88,7 +89,8 @@ async function createIMProviders(
       serviceManager,
       stateStorePath,
       configPath,
-      contributions
+      contributions,
+      agentContributions
     ),
   ];
 
@@ -127,7 +129,8 @@ function createWebUIProviderWithDeps(
   serviceManager?: ServiceManager,
   stateStorePath?: string,
   configPath?: string,
-  contributions?: ConfigContribution[]
+  contributions?: ConfigContribution[],
+  agentContributions?: AgentContribution[]
 ): WebUIProvider {
   const staticRoot = resolveWebUIAssetRoot();
   if (staticRoot) {
@@ -142,6 +145,7 @@ function createWebUIProviderWithDeps(
     configPath,
     staticRoot: staticRoot ?? undefined,
     contributions,
+    agentContributions,
   });
 }
 
@@ -172,6 +176,7 @@ export async function bootstrap(): Promise<void> {
   const providers = await createIMProviders(
     config,
     configContributions,
+    agentContributions,
     serviceManager,
     config.stateStore.path,
     DEFAULT_CONFIG_PATH

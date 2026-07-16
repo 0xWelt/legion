@@ -1,4 +1,4 @@
-import type { AgentContribution, AgentRunnerFactory } from '@0xwelt/legion-api';
+import type { AgentContribution, AgentRunnerFactory, AgentStatus } from '@0xwelt/legion-api';
 import { CodexRunner } from './codex-runner.js';
 
 export function registerCodexRunners(factory: AgentRunnerFactory): void {
@@ -7,6 +7,14 @@ export function registerCodexRunners(factory: AgentRunnerFactory): void {
 
 export const codexAgentContribution: AgentContribution = {
   register: registerCodexRunners,
+  getStatus(): AgentStatus {
+    const hasKey = Boolean(process.env.OPENAI_API_KEY);
+    return {
+      name: 'codex',
+      configured: hasKey,
+      summary: hasKey ? 'OPENAI_API_KEY configured' : 'OPENAI_API_KEY missing',
+    };
+  },
 };
 
 export const agentContribution: AgentContribution = codexAgentContribution;

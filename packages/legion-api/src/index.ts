@@ -8,6 +8,7 @@ export type {
 export { DefaultAgentRunnerFactory } from './agent/factory.js';
 export type {
   AgentContribution,
+  AgentStatus,
   ConfigContribution,
   PromptContext,
 } from './config/contribution.js';

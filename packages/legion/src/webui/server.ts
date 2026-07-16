@@ -3,7 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { IMProviderStatus, ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
+import type {
+  AgentStatus,
+  IMProviderStatus,
+  ServiceManager,
+  ServiceStatus,
+} from '@0xwelt/legion-api';
 
 export interface ClientMessagePayload {
   sessionId: string;
@@ -77,6 +82,7 @@ export interface ServerOptions {
   loadConfig?: () => Promise<unknown>;
   saveConfig?: (config: Record<string, unknown>) => Promise<void>;
   getProviderStatuses?: () => Array<{ name: string } & IMProviderStatus>;
+  getAgentStatuses?: () => AgentStatus[];
 }
 
 export class WebUIServer {
@@ -85,13 +91,19 @@ export class WebUIServer {
   private sockets = new Set<WebSocket>();
   private messageHandler?: MessageHandler;
   private providerStatusProvider?: () => Array<{ name: string } & IMProviderStatus>;
+  private agentStatusProvider?: () => AgentStatus[];
 
   constructor(private readonly options: ServerOptions = {}) {
     this.providerStatusProvider = options.getProviderStatuses;
+    this.agentStatusProvider = options.getAgentStatuses;
   }
 
   setProviderStatusProvider(provider: () => Array<{ name: string } & IMProviderStatus>): void {
     this.providerStatusProvider = provider;
+  }
+
+  setAgentStatusProvider(provider: () => AgentStatus[]): void {
+    this.agentStatusProvider = provider;
   }
 
   onMessage(handler: MessageHandler): void {
@@ -143,6 +155,13 @@ export class WebUIServer {
         const providers = this.providerStatusProvider?.() ?? [];
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ providers }));
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/agents') {
+        const agents = this.agentStatusProvider?.() ?? [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ agents }));
         return;
       }
 

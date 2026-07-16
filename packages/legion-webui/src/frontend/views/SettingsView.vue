@@ -59,10 +59,17 @@ const PROVIDER_ICONS: Record<string, string> = {
   lark: '🐦',
 };
 
+interface AgentStatus {
+  name: string;
+  configured: boolean;
+  summary: string;
+}
+
 const config = ref<LegionConfig>({});
 const configPath = ref<string | undefined>(undefined);
 const status = ref<ServiceStatus | null>(null);
 const providers = ref<ProviderInfo[]>([]);
+const agentStatuses = ref<AgentStatus[]>([]);
 const saving = ref(false);
 const saved = ref(false);
 const loading = ref(true);
@@ -177,16 +184,18 @@ async function fetchAll() {
   loading.value = true;
   error.value = '';
   try {
-    const [statusRes, configRes, providersRes] = await Promise.all([
+    const [statusRes, configRes, providersRes, agentsRes] = await Promise.all([
       fetch('/api/status'),
       fetch('/api/config'),
       fetch('/api/providers'),
+      fetch('/api/agents'),
     ]);
     status.value = (await statusRes.json()) as ServiceStatus;
     const configData = (await configRes.json()) as { config: LegionConfig; configPath?: string };
     config.value = configData.config ?? {};
     configPath.value = configData.configPath;
     providers.value = ((await providersRes.json()) as { providers: ProviderInfo[] }).providers;
+    agentStatuses.value = ((await agentsRes.json()) as { agents: AgentStatus[] }).agents;
 
     // Seed provider data from current config.
     for (const p of providers.value) {
@@ -384,13 +393,23 @@ function statusClass(active?: string): string {
         <button class="section-header" @click="toggleSection('agents')">
           <span class="section-icon">🤖</span>
           <span class="section-title">Agents</span>
-          <span class="section-subtitle">{{ Object.keys(agents).length }} configured</span>
+          <span class="section-subtitle">{{ agentStatuses.length }} registered</span>
           <span class="chevron" :class="{ expanded: !collapsed.agents }">▶</span>
         </button>
         <div class="section-body" :class="{ collapsed: collapsed.agents }">
           <div class="card-content">
+            <div v-if="agentStatuses.length > 0" class="agent-status-list">
+              <div v-for="a in agentStatuses" :key="a.name" class="agent-status-row">
+                <span class="agent-status-name">{{ a.name }}</span>
+                <span class="badge" :class="a.configured ? 'ok' : 'warn'">
+                  {{ a.configured ? 'configured' : 'not configured' }}
+                </span>
+                <span class="agent-status-summary">{{ a.summary }}</span>
+              </div>
+            </div>
+
             <div class="section-actions">
-              <button class="btn small" @click="addAgent">+ Add Agent</button>
+              <button class="btn small" @click="addAgent">+ Add Custom Agent</button>
             </div>
             <div v-if="Object.keys(agents).length === 0" class="empty">
               No custom agents configured.
@@ -823,7 +842,37 @@ h1 {
 }
 
 .section-actions {
+  margin-top: 16px;
   margin-bottom: 16px;
+}
+
+.agent-status-list {
+  margin-bottom: 16px;
+}
+
+.agent-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #21262d;
+}
+
+.agent-status-row:last-child {
+  border-bottom: none;
+}
+
+.agent-status-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #e6edf3;
+  min-width: 100px;
+}
+
+.agent-status-summary {
+  font-size: 12px;
+  color: #8b949e;
+  margin-left: auto;
 }
 
 .empty {

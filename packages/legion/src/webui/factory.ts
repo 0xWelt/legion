@@ -1,4 +1,4 @@
-import type { ConfigContribution, ServiceManager } from '@0xwelt/legion-api';
+import type { AgentContribution, ConfigContribution, ServiceManager } from '@0xwelt/legion-api';
 import { loadConfig, saveConfig } from '../config/loader.js';
 import { webuiConfigContribution } from './contribution.js';
 import { WebUIProvider } from './provider.js';
@@ -12,6 +12,7 @@ export interface CreateWebUIProviderOptions {
   configPath?: string;
   staticRoot?: string;
   contributions?: ConfigContribution[];
+  agentContributions?: AgentContribution[];
 }
 
 export function createWebUIProvider(options: CreateWebUIProviderOptions): WebUIProvider {
@@ -31,6 +32,10 @@ export function createWebUIProvider(options: CreateWebUIProviderOptions): WebUIP
       const merged = { ...existing, ...config };
       await saveConfig(options.configPath, merged);
     },
+    getAgentStatuses: () =>
+      options.agentContributions
+        ?.map((c) => c.getStatus?.())
+        .filter((s): s is NonNullable<typeof s> => s !== undefined) ?? [],
   });
   return new WebUIProvider(options.config, server, options.staticRoot);
 }
