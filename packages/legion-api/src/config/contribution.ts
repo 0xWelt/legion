@@ -25,4 +25,12 @@ export interface ConfigContribution<TConfig = unknown> {
 export interface AgentContribution {
   /** Register agent runners into the factory. */
   register(factory: AgentRunnerFactory): void | Promise<void>;
+  /** Return the configuration status of this agent for display in the Web UI. */
+  getStatus?(): AgentStatus;
+}
+
+export interface AgentStatus {
+  name: string;
+  configured: boolean;
+  summary: string;
 }

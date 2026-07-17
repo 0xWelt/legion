@@ -8,6 +8,7 @@ export type {
 export { DefaultAgentRunnerFactory } from './agent/factory.js';
 export type {
   AgentContribution,
+  AgentStatus,
   ConfigContribution,
   PromptContext,
 } from './config/contribution.js';
@@ -45,6 +46,7 @@ export type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   RenderState,
 } from './im/types.js';

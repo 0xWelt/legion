@@ -4,9 +4,11 @@ import type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   IMEmbed,
   RenderState,
+  Session,
 } from '@0xwelt/legion-api';
 import type { WebUIConfig } from './types.js';
 import type { WebUIServer } from './server.js';
@@ -21,6 +23,21 @@ export class WebUIProvider implements IMProvider {
     private readonly server: WebUIServer,
     private readonly staticRoot?: string
   ) {}
+
+  getServer(): WebUIServer {
+    return this.server;
+  }
+
+  getStatus(): IMProviderStatus {
+    return {
+      configured: true,
+      summary: `host=${this.config.host ?? '127.0.0.1'}, port=${this.config.port ?? 18788}`,
+    };
+  }
+
+  async checkConnection(): Promise<boolean> {
+    return true;
+  }
 
   registerCommands(commands: IMCommandDefinition[]): void {
     this.server.broadcast({ type: 'commands', commands });
@@ -108,5 +125,13 @@ export class WebUIProvider implements IMProvider {
       event,
     });
     return state;
+  }
+
+  async updateSession(target: IMTarget, session: Session): Promise<void> {
+    this.server.broadcast({
+      type: 'session-update',
+      target,
+      session,
+    });
   }
 }

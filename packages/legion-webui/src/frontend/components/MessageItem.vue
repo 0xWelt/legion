@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import type { ChatMessage, Session } from '../types.js';
+import type { ChatMessage, Session, OutputSegment } from '../types.js';
 
 const props = defineProps<{
   message: ChatMessage;
@@ -18,13 +18,24 @@ function firstChar(s: string): string {
   return s.charAt(0).toUpperCase();
 }
 
-const renderedContent = computed(() => {
-  const raw = marked.parse(props.message.content, {
-    async: false,
-    gfm: true,
-    breaks: true,
-  }) as string;
+function renderMarkdown(text: string): string {
+  const raw = marked.parse(text, { async: false, gfm: true, breaks: true }) as string;
   return DOMPurify.sanitize(raw);
+}
+
+function formatJson(value: unknown): string {
+  try {
+    return JSON.stringify(value ?? {}, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+const segments = computed<OutputSegment[]>(() => {
+  if (props.message.segments?.length) return props.message.segments;
+  if (!isUser.value && props.message.content)
+    return [{ type: 'text', content: props.message.content }];
+  return [];
 });
 </script>
 
@@ -35,8 +46,54 @@ const renderedContent = computed(() => {
       <div class="message-meta">
         <span class="sender">{{ senderName }}</span>
       </div>
-      <div class="bubble" :class="{ 'bubble-user': isUser, 'bubble-assistant': !isUser }">
-        <div class="message-content" v-html="renderedContent"></div>
+
+      <!-- User message: plain text -->
+      <div v-if="isUser" class="bubble bubble-user">
+        <div class="message-content plain">{{ message.content }}</div>
+      </div>
+
+      <!-- Assistant structured segments -->
+      <template v-else-if="segments.length">
+        <div
+          v-for="(seg, idx) in segments"
+          :key="idx"
+          class="segment"
+          :class="`segment-${seg.type}`"
+        >
+          <div v-if="seg.type === 'text'" class="bubble bubble-assistant">
+            <div class="message-content" v-html="renderMarkdown(seg.content ?? '')" />
+          </div>
+
+          <details v-else-if="seg.type === 'thinking'" class="thinking" open>
+            <summary>💭 Thinking</summary>
+            <div class="thinking-body" v-html="renderMarkdown(seg.content ?? '')" />
+          </details>
+
+          <div v-else-if="seg.type === 'tool_call'" class="tool-panel">
+            <div class="tool-header">
+              <span class="tool-icon">🔧</span>
+              <span class="tool-name">Tool call: {{ seg.toolName ?? 'unknown' }}</span>
+            </div>
+            <pre class="tool-body"><code>{{ formatJson(seg.input) }}</code></pre>
+          </div>
+
+          <div v-else-if="seg.type === 'tool_result'" class="tool-panel result">
+            <div class="tool-header">
+              <span class="tool-icon">✅</span>
+              <span class="tool-name">Tool result</span>
+            </div>
+            <pre class="tool-body"><code>{{ seg.output ?? '' }}</code></pre>
+          </div>
+
+          <div v-else-if="seg.type === 'error'" class="error-banner">
+            ❌ {{ seg.message ?? 'Unknown error' }}
+          </div>
+        </div>
+      </template>
+
+      <!-- Fallback: render whole content as markdown -->
+      <div v-else class="bubble bubble-assistant">
+        <div class="message-content" v-html="renderMarkdown(message.content)" />
       </div>
     </div>
     <div v-if="isUser" class="avatar avatar-user">{{ avatarLabel }}</div>
@@ -48,7 +105,7 @@ const renderedContent = computed(() => {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  max-width: 85%;
+  max-width: 92%;
 }
 .message-row.user {
   margin-left: auto;
@@ -77,7 +134,7 @@ const renderedContent = computed(() => {
 .message-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
 }
 .message-row.user .message-body {
@@ -109,6 +166,9 @@ const renderedContent = computed(() => {
   border-bottom-left-radius: 4px;
 }
 
+.message-content.plain {
+  white-space: pre-wrap;
+}
 .message-content :deep(p) {
   margin: 0 0 8px;
 }
@@ -172,5 +232,90 @@ const renderedContent = computed(() => {
 }
 .message-content :deep(th) {
   background: #161b22;
+}
+
+/* Structured segments */
+.thinking {
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: #161b22;
+  overflow: hidden;
+}
+.thinking summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #8b949e;
+  cursor: pointer;
+  user-select: none;
+}
+.thinking summary:hover {
+  color: #c9d1d9;
+}
+.thinking-body {
+  padding: 0 14px 12px;
+  font-size: 13px;
+  color: #c9d1d9;
+  line-height: 1.5;
+}
+.thinking-body :deep(p) {
+  margin: 0 0 6px;
+}
+.thinking-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.tool-panel {
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: #161b22;
+  overflow: hidden;
+  min-width: 320px;
+}
+.tool-panel.result {
+  border-left: 3px solid #2ea043;
+}
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0d1117;
+  border-bottom: 1px solid #30363d;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+.tool-icon {
+  font-size: 13px;
+}
+.tool-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.tool-body {
+  margin: 0;
+  padding: 12px;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.tool-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.error-banner {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  color: #f85149;
+  font-size: 13px;
+}
+
+.segment + .segment {
+  margin-top: 8px;
 }
 </style>

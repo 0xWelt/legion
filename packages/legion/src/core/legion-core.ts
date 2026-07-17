@@ -138,6 +138,7 @@ export class LegionCore {
           }
           this.sessionManager.setPath(session.id, expandedPath);
           this.logger.info('Workdir bound', { sessionId: session.id, path: expandedPath });
+          await this.deps.imProvider.updateSession?.(target, session);
           await this.deps.imProvider.sendText(target, `已绑定 workdir: ${expandedPath}`);
         } else {
           const reply = session.path ? `当前 workdir: ${session.path}` : '尚未绑定 workdir';
@@ -182,6 +183,7 @@ export class LegionCore {
               break;
             }
             this.sessionManager.setAgent(session.id, command.name);
+            await this.deps.imProvider.updateSession?.(target, session);
             await this.deps.imProvider.sendText(target, `已切换到 session agent: ${command.name}`);
           }
         } else {
@@ -233,6 +235,7 @@ export class LegionCore {
 
     const work = async (): Promise<void> => {
       this.sessionManager.setStatus(session.id, 'running');
+      await this.deps.imProvider.updateSession?.(target, session);
       const renderState = {
         toolMessageRefs: new Map(),
       };
@@ -275,6 +278,7 @@ export class LegionCore {
         }
       } finally {
         this.sessionManager.setStatus(session.id, 'idle');
+        await this.deps.imProvider.updateSession?.(target, session);
         await this.persist();
       }
     };
@@ -288,6 +292,10 @@ export class LegionCore {
   private async handleAgentEvent(session: Session, event: AgentEvent): Promise<void> {
     if (event.type === 'session_init') {
       this.sessionManager.setAgentSessionId(session.id, event.agentSessionId);
+      await this.deps.imProvider.updateSession?.(
+        { provider: session.provider, sessionId: session.id },
+        session
+      );
       await this.persist();
     }
   }

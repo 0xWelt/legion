@@ -64,7 +64,7 @@ describe('KimiCodeRunner', () => {
       ['-p', 'hello', '--output-format', 'stream-json'],
       expect.objectContaining({ cwd: '/tmp' })
     );
-    expect(events).toContainEqual({ type: 'text', text: 'hi' });
+    expect(events).toContainEqual({ type: 'text', text: 'hi', delta: 'hi' });
   });
 
   it('passes session id when available', async () => {
@@ -150,7 +150,11 @@ describe('KimiCodeRunner', () => {
       toolId: 't1',
       output: 'search result',
     });
-    expect(events).toContainEqual({ type: 'text', text: '今天上海天气晴朗' });
+    expect(events).toContainEqual({
+      type: 'text',
+      text: '今天上海天气晴朗',
+      delta: '今天上海天气晴朗',
+    });
   });
 
   it('emits complete event with exit code', async () => {
