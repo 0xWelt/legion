@@ -283,6 +283,40 @@ const rawConfig = computed(() => JSON.stringify(config.value, null, 2));
 
 onMounted(fetchAll);
 
+const serviceStatus = computed(() => {
+  if (!status.value) return 'unknown';
+  if (!status.value.loaded) return 'not installed';
+  switch (status.value.active) {
+    case 'active':
+      return 'running';
+    case 'inactive':
+      return 'stopped';
+    case 'failed':
+      return 'failed';
+    case 'activating':
+      return 'starting';
+    default:
+      return 'unknown';
+  }
+});
+
+function serviceStatusClass(value: string): string {
+  switch (value) {
+    case 'running':
+      return 'ok';
+    case 'failed':
+      return 'error';
+    case 'starting':
+      return 'warn';
+    case 'stopped':
+      return 'warn';
+    case 'not installed':
+      return 'muted';
+    default:
+      return 'muted';
+  }
+}
+
 function statusClass(active?: string): string {
   switch (active) {
     case 'active':
@@ -332,22 +366,12 @@ function statusClass(active?: string): string {
                 <span class="badge">{{ status?.mode ?? 'unknown' }}</span>
               </div>
               <div class="status-item">
-                <span class="status-label">Service name</span>
-                <span class="status-value mono">{{ status?.serviceName ?? '—' }}</span>
+                <span class="status-label">Service status</span>
+                <span :class="serviceStatusClass(serviceStatus)">{{ serviceStatus }}</span>
               </div>
               <div class="status-item">
-                <span class="status-label">Loaded</span>
-                <span :class="status?.loaded ? 'ok' : 'warn'">{{
-                  status?.loaded ? 'Yes' : 'No'
-                }}</span>
-              </div>
-              <div class="status-item">
-                <span class="status-label">Active</span>
-                <span :class="statusClass(status?.active)">{{ status?.active ?? 'unknown' }}</span>
-              </div>
-              <div class="status-item">
-                <span class="status-label">Enabled</span>
-                <span :class="status?.enabled ? 'ok' : 'warn'">{{
+                <span class="status-label">Start on boot</span>
+                <span :class="status?.enabled ? 'ok' : 'muted'">{{
                   status?.enabled ? 'Yes' : 'No'
                 }}</span>
               </div>
