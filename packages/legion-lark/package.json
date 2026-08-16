@@ -1,6 +1,6 @@
 {
   "name": "@0xwelt/legion-lark",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Lark (Feishu) IM provider for Legion",
   "keywords": [
