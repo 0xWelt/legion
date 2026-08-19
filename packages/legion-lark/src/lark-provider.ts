@@ -7,6 +7,7 @@ import type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   RenderState,
 } from '@0xwelt/legion-api';
@@ -43,6 +44,38 @@ export class LarkProvider implements IMProvider {
       'im.message.receive_v1': async (data: unknown) =>
         this.handleMessageEvent(data as LarkMessageEvent),
     });
+  }
+
+  getStatus(): IMProviderStatus {
+    const configured = Boolean(this.options.appId && this.options.appSecret);
+    return {
+      configured,
+      summary: configured
+        ? `appId=${this.options.appId}, mode=${this.options.mode}`
+        : 'appId/appSecret missing',
+    };
+  }
+
+  async checkConnection(): Promise<boolean> {
+    if (!this.options.appId || !this.options.appSecret) return false;
+    try {
+      const client = new lark.Client({
+        appId: this.options.appId,
+        appSecret: this.options.appSecret,
+        loggerLevel: lark.LoggerLevel.error,
+      });
+      const res = await client.request({
+        method: 'POST',
+        url: 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal',
+        data: {
+          app_id: this.options.appId,
+          app_secret: this.options.appSecret,
+        },
+      });
+      return (res as { code?: number }).code === 0;
+    } catch {
+      return false;
+    }
   }
 
   async start(): Promise<void> {

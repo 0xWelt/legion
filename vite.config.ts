@@ -40,6 +40,6 @@ export default defineConfig({
     },
   },
   staged: {
-    '*.{ts,mjs,json,md,yml,yaml}': ['vp check --fix'],
+    '*.{ts,mjs,json,md,yml,yaml}': ['vp check --fix .'],
   },
 });

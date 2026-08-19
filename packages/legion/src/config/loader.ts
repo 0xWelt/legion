@@ -18,11 +18,17 @@ export async function loadConfig(
   options: LoadConfigOptions = {}
 ): Promise<LegionConfig> {
   const existing = await readExistingConfig(configPath);
+  const fromEnv = readFromEnv(contributions);
+
   if (existing) {
-    return mergeWithDefaults(existing, contributions);
+    // Merge env-based provider config into the file-based config so that
+    // credentials supplied via environment variables still take effect even
+    // when ~/.legion/config.json already exists. Environment variables win
+    // over file values, matching 12-factor config precedence.
+    const merged: Partial<LegionConfig> = { ...existing, ...fromEnv };
+    return mergeWithDefaults(merged, contributions);
   }
 
-  const fromEnv = readFromEnv(contributions);
   if (hasCompleteProvider(fromEnv, contributions)) {
     const config = mergeWithDefaults(fromEnv, contributions);
     await saveConfig(configPath, config);

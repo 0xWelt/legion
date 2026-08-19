@@ -1,4 +1,4 @@
-import type { AgentEvent } from '../core/types.js';
+import type { AgentEvent, Session } from '../core/types.js';
 import type { AccumulatedOutput } from './event-accumulator.js';
 
 export interface IMCommandOption {
@@ -14,6 +14,12 @@ export interface IMCommandDefinition {
   options?: IMCommandOption[];
 }
 
+export interface IMProviderStatus {
+  configured: boolean;
+  connected?: boolean;
+  summary: string;
+}
+
 export interface IMProvider {
   name: string;
   start(): Promise<void>;
@@ -26,6 +32,25 @@ export interface IMProvider {
   sendTyping(target: IMTarget): Promise<void>;
 
   renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState>;
+
+  /**
+   * Optional hook to push a session state update to the IM client. Used by the
+   * Web UI so that the status bar reflects commands such as `/workdir` or
+   * `/agent` without requiring a page refresh.
+   */
+  updateSession?(target: IMTarget, session: Session): Promise<void>;
+
+  /**
+   * Optional provider-specific status shown in the Web UI status page. Each
+   * provider defines what "configured" means for itself.
+   */
+  getStatus?(): IMProviderStatus;
+
+  /**
+   * Optional real connectivity check. Should verify that the provider's
+   * credentials actually work (e.g. by calling the platform API).
+   */
+  checkConnection?(): Promise<boolean>;
 
   onMessage(handler: (msg: IMMessage) => void | Promise<void>): void;
 

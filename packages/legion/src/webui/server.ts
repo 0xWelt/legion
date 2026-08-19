@@ -3,7 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ServiceManager, ServiceStatus } from '@0xwelt/legion-api';
+import type {
+  AgentStatus,
+  IMProviderStatus,
+  ServiceManager,
+  ServiceStatus,
+} from '@0xwelt/legion-api';
 
 export interface ClientMessagePayload {
   sessionId: string;
@@ -19,7 +24,8 @@ export type ServerMessage =
   | { type: 'embed'; target: unknown; embed: unknown; messageId: string }
   | { type: 'edit-embed'; ref: unknown; embed: unknown }
   | { type: 'typing' }
-  | { type: 'agent-event'; target: unknown; event: unknown };
+  | { type: 'agent-event'; target: unknown; event: unknown }
+  | { type: 'session-update'; target: unknown; session: unknown };
 
 type MessageHandler = (payload: ClientMessagePayload) => void;
 
@@ -75,6 +81,8 @@ export interface ServerOptions {
   configPath?: string;
   loadConfig?: () => Promise<unknown>;
   saveConfig?: (config: Record<string, unknown>) => Promise<void>;
+  getProviderStatuses?: () => Promise<Array<{ name: string } & IMProviderStatus>>;
+  getAgentStatuses?: () => AgentStatus[];
 }
 
 export class WebUIServer {
@@ -82,8 +90,23 @@ export class WebUIServer {
   private wss?: WebSocketServer;
   private sockets = new Set<WebSocket>();
   private messageHandler?: MessageHandler;
+  private providerStatusProvider?: () => Promise<Array<{ name: string } & IMProviderStatus>>;
+  private agentStatusProvider?: () => AgentStatus[];
 
-  constructor(private readonly options: ServerOptions = {}) {}
+  constructor(private readonly options: ServerOptions = {}) {
+    this.providerStatusProvider = options.getProviderStatuses;
+    this.agentStatusProvider = options.getAgentStatuses;
+  }
+
+  setProviderStatusProvider(
+    provider: () => Promise<Array<{ name: string } & IMProviderStatus>>
+  ): void {
+    this.providerStatusProvider = provider;
+  }
+
+  setAgentStatusProvider(provider: () => AgentStatus[]): void {
+    this.agentStatusProvider = provider;
+  }
 
   onMessage(handler: MessageHandler): void {
     this.messageHandler = handler;
@@ -127,6 +150,20 @@ export class WebUIServer {
         const config = await this.readConfig();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ config, configPath: this.options.configPath }));
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/providers') {
+        const providers = (await this.providerStatusProvider?.()) ?? [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ providers }));
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/agents') {
+        const agents = this.agentStatusProvider?.() ?? [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ agents }));
         return;
       }
 

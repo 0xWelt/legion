@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue';
 import MessageItem from './MessageItem.vue';
-import type { Session, ChatMessage } from '../types.js';
+import type { Session, ChatMessage, LegionConfig } from '../types.js';
 
 const props = defineProps<{
   session?: Session;
   sessionId?: string | null;
   messages: ChatMessage[];
+  config?: LegionConfig;
 }>();
 
 const emit = defineEmits<{
@@ -55,12 +56,31 @@ watch(
 <template>
   <div class="chat-pane">
     <header class="chat-header">
-      <div class="title">
-        {{ session?.name ?? (sessionId ? 'New session' : 'Select or create a session') }}
-      </div>
-      <div v-if="session" class="meta">
-        <span class="badge">{{ session.agent }}</span>
-        <span v-if="session.path" class="path" :title="session.path">{{ session.path }}</span>
+      <div class="title-row">
+        <div class="title">
+          {{ session?.name ?? (sessionId ? 'New session' : 'Select or create a session') }}
+        </div>
+        <div v-if="sessionId" class="status-bar">
+          <span class="status-pill agent" :title="session?.agent || 'default agent'">
+            🤖 {{ session?.agent || config?.defaultAgent || '—' }}
+          </span>
+          <span
+            class="status-pill workdir"
+            :class="{ unset: !session?.path }"
+            :title="session?.path || '未绑定 workdir'"
+          >
+            📁 {{ session?.path || '未绑定 workdir' }}
+          </span>
+          <span class="status-pill state" :class="session?.status || 'idle'">
+            {{
+              session?.status === 'running'
+                ? '● 运行中'
+                : session?.status === 'error'
+                  ? '● 错误'
+                  : '● 空闲'
+            }}
+          </span>
+        </div>
       </div>
     </header>
 
@@ -105,38 +125,67 @@ watch(
   background: #0d1117;
 }
 .chat-header {
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid #30363d;
   background: #161b22;
+}
+.title-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .title {
   font-weight: 600;
   font-size: 15px;
   color: #e6edf3;
 }
-.meta {
-  font-size: 12px;
-  color: #8b949e;
-  margin-top: 6px;
+.status-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
-.badge {
+.status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(31, 111, 235, 0.15);
-  color: #58a6ff;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
   font-size: 11px;
-  font-weight: 600;
-}
-.path {
-  max-width: 60%;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.status-pill.unset {
+  color: #8b949e;
+}
+.status-pill.state.idle {
+  color: #3fb950;
+  border-color: rgba(63, 185, 80, 0.3);
+}
+.status-pill.state.running {
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.3);
+}
+.status-pill.state.error {
+  color: #f85149;
+  border-color: rgba(248, 81, 73, 0.3);
+}
+.status-pill.agent {
+  color: #d2a8ff;
+  border-color: rgba(210, 168, 255, 0.3);
+}
+.status-pill.workdir {
+  color: #79c0ff;
+  border-color: rgba(121, 192, 255, 0.3);
+}
+.status-pill.workdir.unset {
+  color: #8b949e;
+  border-color: #30363d;
 }
 
 .messages {

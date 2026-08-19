@@ -27,6 +27,11 @@ describe('loadConfig', () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'legion-config-'));
+    // Isolate tests from the developer's shell environment.
+    vi.stubEnv('LEGION_DISCORD_BOT_TOKEN', '');
+    vi.stubEnv('LEGION_DISCORD_ALLOWED_GUILD_ID', '');
+    vi.stubEnv('LEGION_LARK_APP_ID', '');
+    vi.stubEnv('LEGION_LARK_APP_SECRET', '');
   });
 
   afterEach(async () => {
@@ -90,6 +95,41 @@ describe('loadConfig', () => {
       mode: 'long-connection',
     });
     expect(config.discord).toBeUndefined();
+  });
+
+  it('merges env provider config when file already has another provider', async () => {
+    vi.stubEnv('LEGION_DISCORD_BOT_TOKEN', 'env-token');
+    vi.stubEnv('LEGION_DISCORD_ALLOWED_GUILD_ID', 'env-guild');
+
+    const path = join(tempDir, 'config.json');
+    await saveConfig(path, {
+      lark: { appId: 'cli_xxx', appSecret: 'secret', mode: 'long-connection' },
+      defaultAgent: 'kimi-code',
+      stateStore: { path: '~/.legion/state.json' },
+    });
+
+    const config = await loadConfig(CONFIG_CONTRIBUTIONS, path);
+    expect(config.lark).toEqual({
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      mode: 'long-connection',
+    });
+    expect(config.discord).toEqual({ botToken: 'env-token', allowedGuildId: 'env-guild' });
+  });
+
+  it('prefers env provider config over file values', async () => {
+    vi.stubEnv('LEGION_DISCORD_BOT_TOKEN', 'env-token');
+    vi.stubEnv('LEGION_DISCORD_ALLOWED_GUILD_ID', 'env-guild');
+
+    const path = join(tempDir, 'config.json');
+    await saveConfig(path, {
+      discord: { botToken: 'file-token', allowedGuildId: 'file-guild' },
+      defaultAgent: 'kimi-code',
+      stateStore: { path: '~/.legion/state.json' },
+    });
+
+    const config = await loadConfig(CONFIG_CONTRIBUTIONS, path);
+    expect(config.discord).toEqual({ botToken: 'env-token', allowedGuildId: 'env-guild' });
   });
 
   it('reads provider config from environment variables via contributions', async () => {

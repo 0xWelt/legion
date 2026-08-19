@@ -26,6 +26,7 @@ import type {
   IMMessage,
   IMMessageRef,
   IMProvider,
+  IMProviderStatus,
   IMTarget,
   OutputSegment,
   RenderState,
@@ -56,6 +57,25 @@ export class DiscordProvider implements IMProvider {
       ],
       partials: [Partials.Channel],
     });
+  }
+
+  getStatus(): IMProviderStatus {
+    const configured = Boolean(this.options.botToken);
+    return {
+      configured,
+      summary: configured ? `guild=${this.options.allowedGuildId ?? 'any'}` : 'bot token missing',
+    };
+  }
+
+  async checkConnection(): Promise<boolean> {
+    if (!this.options.botToken) return false;
+    try {
+      const rest = new REST({ version: '10' }).setToken(this.options.botToken);
+      await rest.get(Routes.user('@me'));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async start(): Promise<void> {

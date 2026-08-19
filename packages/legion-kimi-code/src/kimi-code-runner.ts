@@ -82,7 +82,17 @@ export class KimiCodeRunner implements AgentRunner {
         }
         const events = this.parseLine(line);
         for (const event of events) {
-          yield event;
+          if (event.type === 'text' && event.text && !event.delta) {
+            // Kimi CLI emits complete text, not streaming deltas. Split it into
+            // chunks so the Web UI can render it as a stream.
+            const chunks = this.splitText(event.text, 10);
+            for (const chunk of chunks) {
+              yield { type: 'text', text: event.text, delta: chunk };
+              await this.sleep(30);
+            }
+          } else {
+            yield event;
+          }
         }
       }
 
@@ -133,6 +143,18 @@ export class KimiCodeRunner implements AgentRunner {
     if (buffer.trim()) {
       yield buffer;
     }
+  }
+
+  private splitText(text: string, chunkSize: number): string[] {
+    const chunks: string[] = [];
+    for (let i = 0; i < text.length; i += chunkSize) {
+      chunks.push(text.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private parseLine(line: string): AgentEvent[] {

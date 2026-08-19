@@ -8,6 +8,7 @@ import type {
   IMProvider,
   IMTarget,
   RenderState,
+  Session,
 } from '@0xwelt/legion-api';
 
 /**
@@ -84,6 +85,11 @@ export class MultiIMProvider implements IMProvider {
   async renderEvent(target: IMTarget, event: AgentEvent, state: RenderState): Promise<RenderState> {
     const provider = this.resolveProvider(target);
     return provider.renderEvent(target, event, state);
+  }
+
+  async updateSession(target: IMTarget, session: Session): Promise<void> {
+    const provider = this.resolveProvider(target);
+    await provider.updateSession?.(target, session);
   }
 
   private recordSourceAndHandle(msg: IMMessage): void {

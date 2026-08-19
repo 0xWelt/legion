@@ -1,4 +1,4 @@
-import type { ServiceManager } from '@0xwelt/legion-api';
+import type { AgentContribution, ConfigContribution, ServiceManager } from '@0xwelt/legion-api';
 import { loadConfig, saveConfig } from '../config/loader.js';
 import { webuiConfigContribution } from './contribution.js';
 import { WebUIProvider } from './provider.js';
@@ -11,25 +11,31 @@ export interface CreateWebUIProviderOptions {
   stateStorePath?: string;
   configPath?: string;
   staticRoot?: string;
+  contributions?: ConfigContribution[];
+  agentContributions?: AgentContribution[];
 }
 
 export function createWebUIProvider(options: CreateWebUIProviderOptions): WebUIProvider {
+  const contributions = options.contributions ?? [webuiConfigContribution];
   const server = new WebUIServer({
     provider: 'webui',
     authToken: options.config.authToken,
     serviceManager: options.serviceManager,
     stateStorePath: options.stateStorePath,
     configPath: options.configPath,
-    loadConfig: async () =>
-      loadConfig([webuiConfigContribution], options.configPath, { skipPrompt: true }),
+    loadConfig: async () => loadConfig(contributions, options.configPath, { skipPrompt: true }),
     saveConfig: async (config) => {
       if (!options.configPath) return;
-      const existing = await loadConfig([webuiConfigContribution], options.configPath, {
+      const existing = await loadConfig(contributions, options.configPath, {
         skipPrompt: true,
       });
       const merged = { ...existing, ...config };
       await saveConfig(options.configPath, merged);
     },
+    getAgentStatuses: () =>
+      options.agentContributions
+        ?.map((c) => c.getStatus?.())
+        .filter((s): s is NonNullable<typeof s> => s !== undefined) ?? [],
   });
   return new WebUIProvider(options.config, server, options.staticRoot);
 }
