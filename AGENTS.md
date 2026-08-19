@@ -130,3 +130,9 @@
 - 不要手动打 tag 触发发布；所有发布动作都通过合并 "chore: release packages" PR 完成。
 - 用户安装入口为 `scripts/install.sh`，内部调用 `npm install -g @0xwelt/legion` 并自动完成后续配置。
 - `scripts/` 目录仅保留 `install.sh`，用于终端用户一键安装；本地开发使用 `vp run dev`，不经过该脚本。
+
+## 7. Web UI 开发调试
+
+调试 `packages/legion-webui` 时，使用 tmux 同时挂起后端 gateway 和前端 dev server，并用 Kimi WebBridge 在真实浏览器里自动化验证界面与交互。具体操作、脚本和排错方法见项目内 skill：
+
+- [`.agents/skills/legion-webui-dev/SKILL.md`](./.agents/skills/legion-webui-dev/SKILL.md)
